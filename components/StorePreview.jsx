@@ -32,7 +32,6 @@ export default function StorePreview({ app }) {
     ["/kampf", "/mission", "/geschichte", "/sammlung"];
 
   async function trackClick(eventName) {
-    // GitHub Pages has no Next API routes; skip fetch there.
     if (typeof window !== "undefined" && window.location.hostname.endsWith("github.io")) {
       return;
     }
@@ -93,7 +92,7 @@ export default function StorePreview({ app }) {
           type="button"
           className={styles.mediaButton}
           onClick={onOpenDetails}
-          aria-label={`${title} Intro öffnen`}
+          aria-label={`${title} Intro oeffnen`}
         >
           <img
             src={resolvedMainShot}
@@ -124,7 +123,7 @@ export default function StorePreview({ app }) {
             {isPrivate ? (
               <a
                 href={contactHref}
-                className={`${styles.button} ${styles.secondaryButton}`}
+                className={`${styles.button} ${styles.secondaryButton} ${styles.contactButton}`}
                 aria-label={`Kontakt aufnehmen mit ${contactLabel}`}
                 target="_blank"
                 rel="noreferrer"
@@ -148,7 +147,7 @@ export default function StorePreview({ app }) {
             type="button"
             className={`${styles.button} ${styles.primaryButton}`}
             onClick={onExternalClick}
-            aria-label={`${title} auf Originalseite öffnen`}
+            aria-label={`${title} auf Originalseite oeffnen`}
             disabled={!storeUrl}
           >
             Zur Originalseite

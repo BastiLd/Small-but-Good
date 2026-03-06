@@ -78,6 +78,8 @@
   background: rgba(255, 255, 255, 0.35);
   border-radius: 12px;
   padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .commandsTitle {
@@ -86,11 +88,20 @@
 }
 
 .commandsList {
-  margin: 0;
+  margin: 0 0 0.65rem;
   padding-left: 1rem;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.25rem 0.5rem;
+}
+
+.commandsList li {
+  line-height: 1.35;
+}
+
+.contactButton {
+  margin-top: 0.35rem;
+  align-self: flex-start;
 }
 
 .actions {
@@ -165,5 +176,9 @@
   .button {
     width: 100%;
     text-align: center;
+  }
+
+  .contactButton {
+    width: auto;
   }
 }

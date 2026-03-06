@@ -70,7 +70,7 @@ export default function AppDetailPage({ params }) {
         </ul>
 
         <Link href="/" className="button detail-inline-btn">
-          Zurück zur Übersicht
+          Zurueck zum Feed
         </Link>
       </div>
     </article>
