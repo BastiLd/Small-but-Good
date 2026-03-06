@@ -1,0 +1,111 @@
+﻿.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: background-color 500ms ease, opacity 500ms ease;
+}
+
+.overlayActive {
+  background: rgba(255, 255, 255, 0.98);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dialog {
+  width: min(680px, 92vw);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(122, 108, 81, 0.35);
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(20, 20, 20, 0.14);
+  padding: 1.1rem;
+  display: grid;
+  gap: 1rem;
+  transform: translateY(16px);
+  opacity: 0;
+  transition: transform 400ms ease, opacity 400ms ease;
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+.contentVisible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.image {
+  width: min(380px, 88%);
+  margin: 0 auto;
+  height: auto;
+  border-radius: 12px;
+  object-fit: contain;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+}
+
+.introText {
+  margin: 0;
+  text-align: center;
+  color: #332919;
+  font-size: clamp(0.98rem, 2vw, 1.1rem);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.confirmButton {
+  justify-self: center;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0.72rem 1.1rem;
+  min-width: 180px;
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: #fff;
+  background: var(--palette-row2-2);
+  cursor: pointer;
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.confirmButton:hover,
+.confirmButton:focus-visible {
+  background: #a6766e;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(177, 130, 121, 0.35);
+}
+
+.confirmButton:focus-visible {
+  outline: 3px solid rgba(174, 211, 206, 0.85);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .dialog {
+    width: 94vw;
+    padding: 0.95rem;
+    border-radius: 14px;
+  }
+
+  .image {
+    width: min(320px, 92%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog,
+  .confirmButton {
+    transition: none;
+  }
+
+  .dialog,
+  .contentVisible {
+    transform: none;
+  }
+}

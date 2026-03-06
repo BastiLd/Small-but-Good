@@ -1,0 +1,252 @@
+"use client";
+
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import styles from "./AppIntroOverlay.module.css";
+import { withBasePath } from "../lib/basePath";
+
+const INTRO_EVENT = "app-intro:open";
+
+function seenKey(appId) {
+  return `introSeen_app_${appId}`;
+}
+
+function wasSeen(appId) {
+  if (typeof window === "undefined" || !appId) return true;
+  try {
+    return window.localStorage.getItem(seenKey(appId)) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function setSeen(appId) {
+  if (typeof window === "undefined" || !appId) return;
+  try {
+    window.localStorage.setItem(seenKey(appId), "1");
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function openIntroFor(appId, options = {}) {
+  if (typeof window === "undefined" || !appId) return false;
+  if (wasSeen(appId)) return false;
+
+  window.dispatchEvent(
+    new CustomEvent(INTRO_EVENT, {
+      detail: {
+        appId,
+        imagePublicPath: options.imagePublicPath,
+        introText: options.introText
+      }
+    })
+  );
+
+  return true;
+}
+
+const AppIntroOverlay = forwardRef(function AppIntroOverlay(
+  { appId, imagePublicPath = "", introText = "" },
+  ref
+) {
+  const router = useRouter();
+  const dialogRef = useRef(null);
+  const confirmButtonRef = useRef(null);
+  const closeTimerRef = useRef(null);
+  const introTimerRef = useRef(null);
+
+  const [mounted, setMounted] = useState(false);
+  const [fadeActive, setFadeActive] = useState(false);
+  const [contentVisible, setContentVisible] = useState(false);
+  const [payload, setPayload] = useState({ appId, imagePublicPath, introText });
+
+  const getReducedMotion = () => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  };
+
+  const close = useCallback((markSeen, shouldRoute) => {
+    const currentAppId = payload?.appId;
+    if (markSeen && currentAppId) setSeen(currentAppId);
+
+    setContentVisible(false);
+    setFadeActive(false);
+
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
+
+    const reduceMotion = getReducedMotion();
+    closeTimerRef.current = setTimeout(() => {
+      setMounted(false);
+
+      if (shouldRoute && currentAppId) {
+        // Integrate click tracking here before routing:
+        // await fetch('/api/track-click', { method: 'POST', ... })
+        const target = `/app/${currentAppId}`;
+
+        try {
+          router.push(target);
+        } catch {
+          window.location.href = withBasePath(target);
+        }
+      }
+    }, reduceMotion ? 0 : 220);
+  }, [payload, router]);
+
+  const open = useCallback((nextPayload) => {
+    const merged = {
+      appId: nextPayload?.appId || appId,
+      imagePublicPath: nextPayload?.imagePublicPath || imagePublicPath,
+      introText: nextPayload?.introText || introText
+    };
+
+    if (!merged.appId || wasSeen(merged.appId)) return;
+
+    setPayload(merged);
+    setMounted(true);
+
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        setFadeActive(true);
+      });
+    } else {
+      setFadeActive(true);
+    }
+
+    const reduceMotion = getReducedMotion();
+    if (introTimerRef.current) {
+      clearTimeout(introTimerRef.current);
+    }
+    introTimerRef.current = setTimeout(() => {
+      setContentVisible(true);
+    }, reduceMotion ? 0 : 500);
+  }, [appId, imagePublicPath, introText]);
+
+  useImperativeHandle(ref, () => ({
+    open,
+    close: () => close(true, false)
+  }), [open, close]);
+
+  useEffect(() => {
+    const onOpenEvent = (event) => {
+      open(event?.detail || {});
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(INTRO_EVENT, onOpenEvent);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener(INTRO_EVENT, onOpenEvent);
+      }
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      if (introTimerRef.current) clearTimeout(introTimerRef.current);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusFirst = () => {
+      if (confirmButtonRef.current) {
+        confirmButtonRef.current.focus();
+      } else if (dialogRef.current) {
+        dialogRef.current.focus();
+      }
+    };
+
+    const t = setTimeout(focusFirst, 0);
+
+    const handleKeyDown = (event) => {
+      if (!dialogRef.current) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close(true, false);
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        close(true, true);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = dialogRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable.length) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mounted, close]);
+
+  if (!mounted) return null;
+
+  return (
+    <div
+      className={`${styles.overlay} ${fadeActive ? styles.overlayActive : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="App Intro Overlay"
+    >
+      <div
+        ref={dialogRef}
+        className={`${styles.dialog} ${contentVisible ? styles.contentVisible : ""}`}
+        tabIndex={-1}
+      >
+        {payload?.imagePublicPath ? (
+          <img
+            src={payload.imagePublicPath}
+            alt={`Intro Bild für ${payload.appId}`}
+            className={styles.image}
+          />
+        ) : null}
+
+        <p className={styles.introText}>{payload?.introText}</p>
+
+        <button
+          ref={confirmButtonRef}
+          type="button"
+          className={styles.confirmButton}
+          aria-label="Verstanden und zur App wechseln"
+          onClick={() => close(true, true)}
+        >
+          Verstanden
+        </button>
+      </div>
+    </div>
+  );
+});
+
+export default AppIntroOverlay;

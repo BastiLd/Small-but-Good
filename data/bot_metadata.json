@@ -1,0 +1,18 @@
+{
+  "id": "nexus-battle",
+  "name": "Nexus Battle Bot",
+  "short_description": "Nexus Battle Bot is a Discord bot project.",
+  "long_description": "Nexus Battle Bot appears to provide 0 command(s) and includes 1 extracted card/game metadata sample item(s).",
+  "commands": [],
+  "cards_sample": [
+    {
+      "table": "services",
+      "columns": []
+    }
+  ],
+  "config": {},
+  "db_tables": [
+    "services"
+  ],
+  "generated_at": "2026-03-05T11:42:46.935609+00:00"
+}
