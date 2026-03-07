@@ -31,7 +31,6 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
   const dialogRef = useRef(null);
   const confirmButtonRef = useRef(null);
   const closeTimerRef = useRef(null);
-  const introTimerRef = useRef(null);
 
   const [mounted, setMounted] = useState(false);
   const [fadeActive, setFadeActive] = useState(false);
@@ -84,18 +83,12 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     if (typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         setFadeActive(true);
+        setContentVisible(true);
       });
     } else {
       setFadeActive(true);
-    }
-
-    const reduceMotion = getReducedMotion();
-    if (introTimerRef.current) {
-      clearTimeout(introTimerRef.current);
-    }
-    introTimerRef.current = setTimeout(() => {
       setContentVisible(true);
-    }, reduceMotion ? 0 : 900);
+    }
   }, [appId, imagePublicPath, introText]);
 
   useImperativeHandle(ref, () => ({
@@ -117,7 +110,6 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
         window.removeEventListener(INTRO_EVENT, onOpenEvent);
       }
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      if (introTimerRef.current) clearTimeout(introTimerRef.current);
     };
   }, [open]);
 

@@ -4,14 +4,14 @@
   z-index: 1000;
   display: grid;
   place-items: center;
-  background: rgba(246, 224, 173, 0);
+  background: rgba(255, 255, 255, 0);
   opacity: 0;
   pointer-events: none;
   transition: background-color 1200ms ease, opacity 1200ms ease;
 }
 
 .overlayActive {
-  background: rgba(246, 224, 173, 0.96);
+  background: rgba(255, 255, 255, 0.96);
   opacity: 1;
   pointer-events: auto;
 }
