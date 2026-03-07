@@ -6,6 +6,7 @@ import styles from "./AppIntroOverlay.module.css";
 import { withBasePath } from "../lib/basePath";
 
 const INTRO_EVENT = "app-intro:open";
+const CONTENT_REVEAL_DELAY_MS = 1650;
 
 export function openIntroFor(appId, options = {}) {
   if (typeof window === "undefined" || !appId) return false;
@@ -31,6 +32,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
   const dialogRef = useRef(null);
   const confirmButtonRef = useRef(null);
   const closeTimerRef = useRef(null);
+  const contentTimerRef = useRef(null);
 
   const [mounted, setMounted] = useState(false);
   const [fadeActive, setFadeActive] = useState(false);
@@ -50,6 +52,9 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
 
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
+    }
+    if (contentTimerRef.current) {
+      clearTimeout(contentTimerRef.current);
     }
 
     const reduceMotion = getReducedMotion();
@@ -79,11 +84,24 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
 
     setPayload(merged);
     setMounted(true);
+    setContentVisible(false);
+
+    if (contentTimerRef.current) {
+      clearTimeout(contentTimerRef.current);
+    }
 
     if (typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         setFadeActive(true);
-        setContentVisible(true);
+
+        if (getReducedMotion()) {
+          setContentVisible(true);
+          return;
+        }
+
+        contentTimerRef.current = setTimeout(() => {
+          setContentVisible(true);
+        }, CONTENT_REVEAL_DELAY_MS);
       });
     } else {
       setFadeActive(true);
@@ -110,11 +128,12 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
         window.removeEventListener(INTRO_EVENT, onOpenEvent);
       }
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      if (contentTimerRef.current) clearTimeout(contentTimerRef.current);
     };
   }, [open]);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !contentVisible) return;
 
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -175,7 +194,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = prevOverflow;
     };
-  }, [mounted, close]);
+  }, [mounted, contentVisible, close]);
 
   if (!mounted) return null;
 

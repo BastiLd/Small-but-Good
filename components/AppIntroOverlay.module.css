@@ -1,4 +1,5 @@
 .overlay {
+  --intro-fade-duration: 2500ms;
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -6,13 +7,18 @@
   place-items: center;
   background: rgba(246, 224, 173, 0);
   opacity: 0;
+  backdrop-filter: blur(0);
   pointer-events: none;
-  transition: background-color 2500ms ease, opacity 2500ms ease;
+  transition:
+    background-color var(--intro-fade-duration) ease,
+    opacity var(--intro-fade-duration) ease,
+    backdrop-filter var(--intro-fade-duration) ease;
 }
 
 .overlayActive {
   background: rgba(246, 224, 173, 0.96);
   opacity: 1;
+  backdrop-filter: blur(8px);
   pointer-events: auto;
 }
 
@@ -25,9 +31,9 @@
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 24px 60px rgba(76, 53, 22, 0.18);
   padding: 1.5rem;
-  transform: translateY(24px);
+  transform: translateY(28px) scale(0.985);
   opacity: 0;
-  transition: transform 2500ms ease, opacity 2500ms ease;
+  transition: transform 850ms ease, opacity 850ms ease;
 }
 
 .dialog:focus {
