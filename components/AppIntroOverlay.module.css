@@ -4,14 +4,14 @@
   z-index: 1000;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0);
+  background: rgba(246, 224, 173, 0);
   opacity: 0;
   pointer-events: none;
-  transition: background-color 1200ms ease, opacity 1200ms ease;
+  transition: background-color 1800ms ease, opacity 1800ms ease;
 }
 
 .overlayActive {
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(246, 224, 173, 0.96);
   opacity: 1;
   pointer-events: auto;
 }
@@ -22,12 +22,12 @@
   overflow: auto;
   border-radius: 22px;
   border: 1px solid rgba(122, 108, 81, 0.3);
-  background: rgba(255, 249, 234, 0.9);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 24px 60px rgba(76, 53, 22, 0.18);
   padding: 1.5rem;
   transform: translateY(24px);
   opacity: 0;
-  transition: transform 950ms ease, opacity 950ms ease;
+  transition: transform 1800ms ease, opacity 1800ms ease;
 }
 
 .dialog:focus {
