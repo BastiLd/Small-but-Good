@@ -39,38 +39,54 @@ export default function AppDetailPage({ params }) {
         <h1 style={{ marginTop: 0 }}>{app.title}</h1>
         <p className="detail-text">{app.longDescription}</p>
 
-        <h2>Hauptfunktionen</h2>
-        <ul className="detail-list">
-          {(app.features || []).map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        {(app.features || []).length ? (
+          <>
+            <h2>Hauptfunktionen</h2>
+            <ul className="detail-list">
+              {(app.features || []).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
-        <h2>Wichtige Commands</h2>
-        <ul className="detail-list">
-          {(app.commands || []).map((cmd) => (
-            <li key={cmd.signature}>
-              <strong>{cmd.signature}</strong> - {cmd.desc}
-            </li>
-          ))}
-        </ul>
+        {(app.commands || []).length ? (
+          <>
+            <h2>Wichtige Commands</h2>
+            <ul className="detail-list">
+              {(app.commands || []).map((cmd) => (
+                <li key={cmd.signature}>
+                  <strong>{cmd.signature}</strong> - {cmd.desc}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
-        <h2>Beispielkarten</h2>
-        <ul className="detail-list">
-          {(app.cardsPreview || []).map((card) => (
-            <li key={card}>{card}</li>
-          ))}
-        </ul>
+        {(app.cardsPreview || []).length ? (
+          <>
+            <h2>Beispielkarten</h2>
+            <ul className="detail-list">
+              {(app.cardsPreview || []).map((card) => (
+                <li key={card}>{card}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
-        <h2>DB Tabellen (Auszug)</h2>
-        <ul className="detail-list">
-          {(app.dbTables || []).map((tableName) => (
-            <li key={tableName}>{tableName}</li>
-          ))}
-        </ul>
+        {(app.dbTables || []).length ? (
+          <>
+            <h2>DB-Tabellen (Auszug)</h2>
+            <ul className="detail-list">
+              {(app.dbTables || []).map((tableName) => (
+                <li key={tableName}>{tableName}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zurueck zum Feed
+          Zurück zum Feed
         </Link>
       </div>
     </article>

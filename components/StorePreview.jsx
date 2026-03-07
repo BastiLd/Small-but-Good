@@ -92,7 +92,7 @@ export default function StorePreview({ app }) {
           type="button"
           className={styles.mediaButton}
           onClick={onOpenDetails}
-          aria-label={`${title} Intro oeffnen`}
+          aria-label={`${title} Intro öffnen`}
         >
           <img
             src={resolvedMainShot}
@@ -147,7 +147,7 @@ export default function StorePreview({ app }) {
             type="button"
             className={`${styles.button} ${styles.primaryButton}`}
             onClick={onExternalClick}
-            aria-label={`${title} auf Originalseite oeffnen`}
+            aria-label={`${title} auf Originalseite öffnen`}
             disabled={!storeUrl}
           >
             Zur Originalseite

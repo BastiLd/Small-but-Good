@@ -7,31 +7,8 @@ import { withBasePath } from "../lib/basePath";
 
 const INTRO_EVENT = "app-intro:open";
 
-function seenKey(appId) {
-  return `introSeen_app_${appId}`;
-}
-
-function wasSeen(appId) {
-  if (typeof window === "undefined" || !appId) return true;
-  try {
-    return window.localStorage.getItem(seenKey(appId)) === "1";
-  } catch {
-    return true;
-  }
-}
-
-function setSeen(appId) {
-  if (typeof window === "undefined" || !appId) return;
-  try {
-    window.localStorage.setItem(seenKey(appId), "1");
-  } catch {
-    // Ignore storage errors
-  }
-}
-
 export function openIntroFor(appId, options = {}) {
   if (typeof window === "undefined" || !appId) return false;
-  if (wasSeen(appId)) return false;
 
   window.dispatchEvent(
     new CustomEvent(INTRO_EVENT, {
@@ -66,9 +43,8 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   };
 
-  const close = useCallback((markSeen, shouldRoute) => {
+  const close = useCallback((shouldRoute) => {
     const currentAppId = payload?.appId;
-    if (markSeen && currentAppId) setSeen(currentAppId);
 
     setContentVisible(false);
     setFadeActive(false);
@@ -102,7 +78,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       introText: nextPayload?.introText || introText
     };
 
-    if (!merged.appId || wasSeen(merged.appId)) return;
+    if (!merged.appId) return;
 
     setPayload(merged);
     setMounted(true);
@@ -126,7 +102,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
 
   useImperativeHandle(ref, () => ({
     open,
-    close: () => close(true, false)
+    close: () => close(false)
   }), [open, close]);
 
   useEffect(() => {
@@ -168,13 +144,13 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
 
       if (event.key === "Escape") {
         event.preventDefault();
-        close(true, false);
+        close(false);
         return;
       }
 
       if (event.key === "Enter") {
         event.preventDefault();
-        close(true, true);
+        close(true);
         return;
       }
 
@@ -240,7 +216,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
           type="button"
           className={styles.confirmButton}
           aria-label="Verstanden und zur App wechseln"
-          onClick={() => close(true, true)}
+          onClick={() => close(true)}
         >
           Verstanden
         </button>

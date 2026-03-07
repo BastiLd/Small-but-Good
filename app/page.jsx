@@ -6,9 +6,9 @@ export default function HomePage() {
   return (
     <>
       <section className="hero">
-        <h1 style={{ marginTop: 0 }}>MFU Nexus Battle</h1>
+        <h1 style={{ marginTop: 0 }}>Marvel Fan Universe</h1>
         <p>
-          Dein Marvel Card-Game Bot mit Fights, Missionen und kommendem Story-Mode.
+          Entdecke deine MFU-Projekte an einem Ort.
           Klick auf Bild oder "Mehr Infos" und du bekommst zuerst den Intro-Fade.
         </p>
       </section>
