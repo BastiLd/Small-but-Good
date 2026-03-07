@@ -58,8 +58,6 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       setMounted(false);
 
       if (shouldRoute && currentAppId) {
-        // Integrate click tracking here before routing:
-        // await fetch('/api/track-click', { method: 'POST', ... })
         const target = `/app/${currentAppId}`;
 
         try {
@@ -68,7 +66,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
           window.location.href = withBasePath(target);
         }
       }
-    }, reduceMotion ? 0 : 220);
+    }, reduceMotion ? 0 : 420);
   }, [payload, router]);
 
   const open = useCallback((nextPayload) => {
@@ -97,7 +95,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     }
     introTimerRef.current = setTimeout(() => {
       setContentVisible(true);
-    }, reduceMotion ? 0 : 500);
+    }, reduceMotion ? 0 : 900);
   }, [appId, imagePublicPath, introText]);
 
   useImperativeHandle(ref, () => ({
@@ -201,25 +199,31 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
         className={`${styles.dialog} ${contentVisible ? styles.contentVisible : ""}`}
         tabIndex={-1}
       >
-        {payload?.imagePublicPath ? (
-          <img
-            src={payload.imagePublicPath}
-            alt={`Intro Bild für ${payload.appId}`}
-            className={styles.image}
-          />
-        ) : null}
+        <div className={styles.dialogBody}>
+          {payload?.imagePublicPath ? (
+            <div className={styles.mediaFrame}>
+              <img
+                src={payload.imagePublicPath}
+                alt={`Intro Bild für ${payload.appId}`}
+                className={styles.image}
+              />
+            </div>
+          ) : null}
 
-        <p className={styles.introText}>{payload?.introText}</p>
+          <div className={styles.copyColumn}>
+            <p className={styles.introText}>{payload?.introText}</p>
 
-        <button
-          ref={confirmButtonRef}
-          type="button"
-          className={styles.confirmButton}
-          aria-label="Verstanden und zur App wechseln"
-          onClick={() => close(true)}
-        >
-          Verstanden
-        </button>
+            <button
+              ref={confirmButtonRef}
+              type="button"
+              className={styles.confirmButton}
+              aria-label="Verstanden und zur App wechseln"
+              onClick={() => close(true)}
+            >
+              Verstanden
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

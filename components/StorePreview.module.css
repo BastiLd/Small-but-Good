@@ -15,14 +15,17 @@
   overflow: hidden;
   border: 1px solid var(--palette-row3-2);
   background: #fff6dc;
+  display: flex;
 }
 
 .mediaButton {
   width: 100%;
   height: 100%;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
-  padding: 0;
+  padding: 1rem;
   background: transparent;
   cursor: pointer;
 }
@@ -33,10 +36,11 @@
 }
 
 .screenshot {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   max-height: 340px;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 

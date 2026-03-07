@@ -25,14 +25,16 @@ export default function AppDetailPage({ params }) {
           <span className="detail-chip">{app.type}</span>
         </div>
 
-        <a
-          href={app.store_url}
-          target="_blank"
-          rel="noreferrer"
-          className="button detail-inline-btn"
-        >
-          Zur Originalseite
-        </a>
+        {app.store_url ? (
+          <a
+            href={app.store_url}
+            target="_blank"
+            rel="noreferrer"
+            className="button detail-inline-btn"
+          >
+            Zur Originalseite
+          </a>
+        ) : null}
       </div>
 
       <div>
