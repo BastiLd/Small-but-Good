@@ -374,7 +374,7 @@ export default function CreatorDashboardClient() {
           <div>
             <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
             <p style={{ marginTop: 0 }}>
-              Hier pr\u00FCfst du neue Projekte und schaltest sie direkt f\u00FCr die Startseite frei.
+              Hier prüfst du neue Projekte und schaltest sie direkt für die Startseite frei.
             </p>
           </div>
           <span className="status-pill">{queue.length} offen</span>
