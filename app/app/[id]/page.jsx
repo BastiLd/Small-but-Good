@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import InteractionTracker from "../../../components/InteractionTracker";
+import TrackedExternalLink from "../../../components/TrackedExternalLink";
 import { APPS, getAppById } from "../../../lib/apps";
 import { withBasePath } from "../../../lib/basePath";
 
@@ -35,14 +36,15 @@ export default function AppDetailPage({ params }) {
         </div>
 
         {app.store_url ? (
-          <a
+          <TrackedExternalLink
             href={app.store_url}
-            target="_blank"
-            rel="noreferrer"
+            itemId={app.runtimeId || app.id}
+            itemTitle={app.title}
+            itemSource={app.itemSource || "local"}
             className="button detail-inline-btn"
           >
             Zur Originalseite
-          </a>
+          </TrackedExternalLink>
         ) : null}
       </div>
 
