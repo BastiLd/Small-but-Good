@@ -62,7 +62,7 @@ a {
 }
 
 .container {
-  width: min(1120px, 92%);
+  width: min(1320px, 92%);
   margin: 0 auto;
 }
 
@@ -133,6 +133,14 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: 1rem;
+}
+
+.project-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .card {
@@ -243,16 +251,34 @@ a {
   flex-wrap: wrap;
 }
 
-.stats-grid {
+.dashboard-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
+}
+
+.metric-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.metric-row-centered {
+  max-width: 810px;
+  margin: 0 auto;
 }
 
 .stat-card {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.compact-stat-card {
+  width: 100%;
+  max-width: 250px;
+  min-height: 0;
+  padding: 0.85rem;
 }
 
 .stat-label {
@@ -266,10 +292,17 @@ a {
 }
 
 .stat-description {
-  min-height: 3.2rem;
   margin: 0;
   color: #5a4930;
-  line-height: 1.45;
+  line-height: 1.4;
+}
+
+.stat-description-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  min-height: 3.7rem;
 }
 
 .stat-button {
@@ -295,28 +328,6 @@ a {
 .queue-list {
   display: grid;
   gap: 0.9rem;
-}
-
-.metric-detail-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.85rem;
-}
-
-.metric-detail-item {
-  border: 1px solid var(--surface-3);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.32);
-  padding: 0.9rem;
-}
-
-.metric-detail-item p {
-  margin: 0.45rem 0;
-  line-height: 1.45;
-}
-
-.metric-detail-item small {
-  color: #5a4930;
 }
 
 .queue-item {
@@ -349,6 +360,36 @@ a {
   flex-direction: column;
   gap: 0.6rem;
   min-width: 140px;
+}
+
+.project-stats-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.75rem 0;
+  color: #5a4930;
+}
+
+.metric-detail-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+}
+
+.metric-detail-item {
+  border: 1px solid var(--surface-3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.32);
+  padding: 0.9rem;
+}
+
+.metric-detail-item p {
+  margin: 0.45rem 0;
+  line-height: 1.45;
+}
+
+.metric-detail-item small {
+  color: #5a4930;
 }
 
 .detail-wrap {
@@ -457,7 +498,8 @@ a {
   }
 
   .button-row .button,
-  .queue-actions .button {
+  .queue-actions .button,
+  .stat-button {
     width: 100%;
   }
 }

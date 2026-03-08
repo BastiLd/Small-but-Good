@@ -1,17 +1,18 @@
 .card {
-  display: grid;
-  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
-  gap: 1rem;
-  min-height: 360px;
+  width: 100%;
+  max-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   border-radius: 16px;
   border: 1px solid var(--palette-row3-3);
   background: var(--palette-row3-1);
-  padding: 1rem;
+  padding: 0.85rem;
   box-shadow: 0 8px 20px rgba(31, 21, 8, 0.08);
 }
 
 .mediaWrap {
-  min-height: 320px;
+  min-height: 180px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--palette-row3-2);
@@ -26,7 +27,7 @@
   align-items: stretch;
   justify-content: center;
   border: 0;
-  padding: 0.75rem;
+  padding: 0.5rem;
   background: transparent;
   cursor: pointer;
 }
@@ -42,7 +43,7 @@
 
 .screenshot {
   width: 100%;
-  height: 100%;
+  height: 180px;
   object-fit: contain;
   display: block;
 }
@@ -59,37 +60,38 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.55rem;
+  flex: 1;
 }
 
 .title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   line-height: 1.2;
 }
 
 .shortDesc {
   margin: 0;
   color: #332919;
-  line-height: 1.45;
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 3;
   overflow: hidden;
 }
 
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .tag {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0.22rem 0.65rem;
-  font-size: 0.82rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
   background: var(--palette-row3-2);
   color: #2a2115;
 }
@@ -98,49 +100,51 @@
   border: 1px solid var(--palette-row3-3);
   background: rgba(255, 255, 255, 0.35);
   border-radius: 12px;
-  padding: 0.75rem;
+  padding: 0.65rem;
   display: flex;
   flex-direction: column;
+  gap: 0.45rem;
 }
 
 .commandsTitle {
-  margin: 0 0 0.45rem;
-  font-size: 0.95rem;
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .commandsList {
-  margin: 0 0 0.65rem;
+  margin: 0;
   padding-left: 1rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.25rem 0.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.2rem;
 }
 
 .commandsList li {
-  line-height: 1.35;
+  line-height: 1.3;
 }
 
 .contactButton {
-  margin-top: 0.35rem;
+  margin-top: 0.1rem;
   align-self: flex-start;
 }
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
+  flex-direction: column;
+  gap: 0.45rem;
   margin-top: auto;
 }
 
 .button {
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 0.55rem 0.9rem;
+  padding: 0.5rem 0.85rem;
   font-weight: 700;
-  font-size: 0.92rem;
-  line-height: 1;
+  font-size: 0.88rem;
+  line-height: 1.1;
   cursor: pointer;
   text-decoration: none;
+  text-align: center;
   transition:
     background-color 0.2s ease,
     color 0.2s ease,
@@ -180,30 +184,4 @@
   border-color: #7a9b95;
   color: #44534f;
   background: rgba(132, 168, 162, 0.12);
-}
-
-@media (max-width: 920px) {
-  .card {
-    grid-template-columns: 1fr;
-    min-height: unset;
-  }
-
-  .mediaWrap {
-    min-height: 260px;
-  }
-}
-
-@media (max-width: 520px) {
-  .commandsList {
-    grid-template-columns: 1fr;
-  }
-
-  .button {
-    width: 100%;
-    text-align: center;
-  }
-
-  .contactButton {
-    width: auto;
-  }
 }

@@ -74,7 +74,7 @@ export default function ProjectGrid({ initialApps }) {
         routePath="/"
       />
 
-      <section className="page-grid" aria-label="Projekt\u00FCbersicht">
+      <section className="project-grid" aria-label="Projektübersicht">
         {visibleApps.map((app) => (
           <StorePreview key={app.id} app={app} />
         ))}
