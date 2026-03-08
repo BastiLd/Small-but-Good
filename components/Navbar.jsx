@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 export default function Navbar() {
   return (
@@ -9,9 +9,9 @@ export default function Navbar() {
           CuratedHub
         </Link>
         <nav className="nav-links" aria-label="Hauptnavigation">
-          <Link href="/">Home</Link>
-          <Link href="/submit">Submit</Link>
-          <Link href="/creator/dashboard">Creator Dashboard</Link>
+          <Link href="/">Startseite</Link>
+          <Link href="/submit">Projekt einreichen</Link>
+          <Link href="/creator/dashboard">Creator-Bereich</Link>
         </nav>
       </div>
     </header>

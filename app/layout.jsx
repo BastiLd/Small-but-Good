@@ -1,9 +1,9 @@
-﻿import "./globals.css";
+import "./globals.css";
 import Layout from "../components/Layout";
 
 export const metadata = {
-  title: "Curated App/Bot Discovery",
-  description: "Discover high-quality apps and bots"
+  title: "CuratedHub",
+  description: "Ausgewählte Apps, Bots und Creator entdecken"
 };
 
 export default function RootLayout({ children }) {

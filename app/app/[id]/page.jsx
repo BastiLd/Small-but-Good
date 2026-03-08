@@ -21,8 +21,8 @@ export default function AppDetailPage({ params }) {
         />
 
         <div className="detail-chip-row">
-          <span className="detail-chip">{app.platform}</span>
-          <span className="detail-chip">{app.type}</span>
+          <span className="detail-chip">{app.platformLabel || app.platform}</span>
+          <span className="detail-chip">{app.typeLabel || app.type}</span>
         </div>
 
         {app.store_url ? (
@@ -39,7 +39,16 @@ export default function AppDetailPage({ params }) {
 
       <div>
         <h1 style={{ marginTop: 0 }}>{app.title}</h1>
-        <p className="detail-text">{app.longDescription}</p>
+
+        {app.detailBodyImage ? (
+          <img
+            src={withBasePath(app.detailBodyImage)}
+            alt={app.detailBodyImageAlt || `${app.title} Vorschau`}
+            className="detail-body-image"
+          />
+        ) : null}
+
+        {app.longDescription ? <p className="detail-text">{app.longDescription}</p> : null}
 
         {(app.features || []).length ? (
           <>
@@ -54,7 +63,7 @@ export default function AppDetailPage({ params }) {
 
         {(app.commands || []).length ? (
           <>
-            <h2>Wichtige Commands</h2>
+            <h2>Wichtige Befehle</h2>
             <ul className="detail-list">
               {(app.commands || []).map((cmd) => (
                 <li key={cmd.signature}>
@@ -78,7 +87,7 @@ export default function AppDetailPage({ params }) {
 
         {(app.dbTables || []).length ? (
           <>
-            <h2>DB-Tabellen (Auszug)</h2>
+            <h2>Datenbank-Tabellen</h2>
             <ul className="detail-list">
               {(app.dbTables || []).map((tableName) => (
                 <li key={tableName}>{tableName}</li>
@@ -88,7 +97,7 @@ export default function AppDetailPage({ params }) {
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zurück zum Feed
+          Zurück zur Übersicht
         </Link>
       </div>
     </article>

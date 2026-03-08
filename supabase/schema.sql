@@ -1,4 +1,4 @@
-﻿create extension if not exists pgcrypto;
+create extension if not exists pgcrypto;
 
 create table if not exists creators (
   id uuid primary key default gen_random_uuid(),
@@ -40,6 +40,27 @@ create table if not exists payments (
   created_at timestamptz not null default now()
 );
 
+create table if not exists submission_requests (
+  id uuid primary key default gen_random_uuid(),
+  creator_name text not null,
+  email text not null,
+  project_name text not null,
+  website_url text,
+  description text not null,
+  source text not null default 'website',
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_apps_creator on apps(creator_id);
 create index if not exists idx_clicks_app_time on clicks(app_id, clicked_at desc);
 create index if not exists idx_payments_creator on payments(creator_id, created_at desc);
+create index if not exists idx_submission_requests_created_at on submission_requests(created_at desc);
+
+alter table submission_requests enable row level security;
+
+drop policy if exists "Öffentliche Einreichungen" on submission_requests;
+create policy "Öffentliche Einreichungen"
+on submission_requests
+for insert
+to anon
+with check (source = 'website');

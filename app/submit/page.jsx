@@ -1,34 +1,14 @@
-﻿import { supabase } from "../../lib/supabase";
-import { stripe } from "../../lib/stripe";
+import SubmitProjectForm from "../../components/SubmitProjectForm";
 
 export default function SubmitPage() {
   return (
     <section className="card">
-      <h1>Submit App/Bot</h1>
+      <h1>Projekt einreichen</h1>
       <p>
-        Auth stub: {supabase ? "Supabase configured" : "Set SUPABASE_URL/SUPABASE_KEY in .env.local"}
+        Trag dein Projekt ein und entscheide dann unten, ob du alles per E-Mail öffnen oder direkt
+        mit Supabase senden willst.
       </p>
-      <p>
-        Payments stub: {stripe ? "Stripe configured" : "Set STRIPE_KEY in .env.local"}
-      </p>
-
-      <form>
-        <label>
-          App Name
-          <input className="input" name="name" placeholder="My App" />
-        </label>
-        <label>
-          Website
-          <input className="input" name="url" placeholder="https://..." />
-        </label>
-        <label>
-          Description
-          <textarea className="textarea" name="description" placeholder="Short pitch..." />
-        </label>
-        <button type="submit" className="button">
-          Submit (stub)
-        </button>
-      </form>
+      <SubmitProjectForm />
     </section>
   );
 }

@@ -13,8 +13,10 @@ export default function StorePreview({ app }) {
     shortDesc,
     screenshots = [],
     platform,
+    platformLabel,
     store_url: storeUrl,
-    type
+    type,
+    typeLabel
   } = app;
 
   const mainShot = screenshots[0] || "/images/Logo_Nexus_Battle.png";
@@ -47,7 +49,7 @@ export default function StorePreview({ app }) {
         })
       });
     } catch {
-      // Ignore tracking errors in UI flow
+      // Tracking darf die Oberfläche nicht stören.
     }
   }
 
@@ -108,13 +110,13 @@ export default function StorePreview({ app }) {
         <p className={styles.shortDesc}>{shortDesc}</p>
 
         <div className={styles.tags}>
-          <span className={styles.tag}>{platform || "web"}</span>
-          <span className={styles.tag}>{type || "tool"}</span>
+          <span className={styles.tag}>{platformLabel || platform || "Web"}</span>
+          <span className={styles.tag}>{typeLabel || type || "Projekt"}</span>
         </div>
 
         {isDiscordBot ? (
-          <section className={styles.commandsPanel} aria-label="Discord Bot Commands">
-            <h4 className={styles.commandsTitle}>Beispiel-Commands</h4>
+          <section className={styles.commandsPanel} aria-label="Discord-Bot-Befehle">
+            <h4 className={styles.commandsTitle}>Beispiel-Befehle</h4>
             <ul className={styles.commandsList}>
               {previewCommands.map((command) => (
                 <li key={command}>{command}</li>

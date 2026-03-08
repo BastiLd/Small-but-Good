@@ -203,7 +203,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       className={`${styles.overlay} ${fadeActive ? styles.overlayActive : ""}`}
       role="dialog"
       aria-modal="true"
-      aria-label="App Intro Overlay"
+      aria-label="App-Intro"
     >
       <div
         ref={dialogRef}
@@ -215,7 +215,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
             <div className={styles.mediaFrame}>
               <img
                 src={payload.imagePublicPath}
-                alt={`Intro Bild für ${payload.appId}`}
+                alt={`Intro-Bild für ${payload.appId}`}
                 className={styles.image}
               />
             </div>
@@ -228,7 +228,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
               ref={confirmButtonRef}
               type="button"
               className={styles.confirmButton}
-              aria-label="Verstanden und zur App wechseln"
+              aria-label="Verstanden und zur Projektseite wechseln"
               onClick={() => close(true)}
             >
               Verstanden
