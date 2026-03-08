@@ -137,7 +137,7 @@ on interaction_events
 for insert
 to anon, authenticated
 with check (
-  event_type in ('page_view', 'detail_view', 'intro_open', 'external_click')
+  event_type in ('page_view', 'detail_view', 'intro_open', 'external_click', 'magic_link_request')
 );
 
 drop policy if exists admin_interaction_select on interaction_events;
