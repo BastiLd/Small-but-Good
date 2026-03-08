@@ -5,8 +5,8 @@ export default function SubmitPage() {
     <section className="card">
       <h1>Projekt einreichen</h1>
       <p>
-        Trag dein Projekt ein und entscheide dann unten, ob du alles per E-Mail öffnen oder direkt
-        mit Supabase senden willst.
+        Trag dein Projekt ein und entscheide dann unten, ob du alles per E-Mail &ouml;ffnen oder
+        direkt mit Supabase senden willst.
       </p>
       <SubmitProjectForm />
     </section>

@@ -1,7 +1,8 @@
 .card {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 1.15fr;
+  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
   gap: 1rem;
+  min-height: 360px;
   border-radius: 16px;
   border: 1px solid var(--palette-row3-3);
   background: var(--palette-row3-1);
@@ -10,7 +11,7 @@
 }
 
 .mediaWrap {
-  min-height: 220px;
+  min-height: 320px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--palette-row3-2);
@@ -22,12 +23,16 @@
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   border: 0;
-  padding: 1rem;
+  padding: 0.75rem;
   background: transparent;
   cursor: pointer;
+}
+
+.mediaButtonBleed {
+  padding: 0;
 }
 
 .mediaButton:focus-visible {
@@ -36,15 +41,22 @@
 }
 
 .screenshot {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 340px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   display: block;
 }
 
+.screenshotCover {
+  object-fit: cover;
+}
+
+.screenshotBleed {
+  border-radius: 0;
+}
+
 .meta {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -52,13 +64,18 @@
 
 .title {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   line-height: 1.2;
 }
 
 .shortDesc {
   margin: 0;
   color: #332919;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
 }
 
 .tags {
@@ -124,7 +141,10 @@
   line-height: 1;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
     transform 0.2s ease;
 }
 
@@ -165,10 +185,11 @@
 @media (max-width: 920px) {
   .card {
     grid-template-columns: 1fr;
+    min-height: unset;
   }
 
   .mediaWrap {
-    min-height: 180px;
+    min-height: 260px;
   }
 }
 

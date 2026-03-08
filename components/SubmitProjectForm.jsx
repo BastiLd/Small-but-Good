@@ -8,6 +8,7 @@ const initialForm = {
   email: "",
   projectName: "",
   website: "",
+  imageUrl: "",
   description: ""
 };
 
@@ -17,6 +18,7 @@ function buildMailtoBody(form) {
     `E-Mail: ${form.email}`,
     `Projektname: ${form.projectName}`,
     `Website oder Kanal: ${form.website || "-"}`,
+    `Vorschaubild-URL: ${form.imageUrl || "-"}`,
     "",
     "Beschreibung:",
     form.description
@@ -37,7 +39,7 @@ export default function SubmitProjectForm() {
     if (!form.creatorName.trim() || !form.email.trim() || !form.projectName.trim() || !form.description.trim()) {
       setStatus({
         type: "error",
-        message: "Bitte fülle Name, E-Mail, Projektname und Beschreibung aus."
+        message: "Bitte f\u00FClle Name, E-Mail, Projektname und Beschreibung aus."
       });
       return false;
     }
@@ -53,7 +55,7 @@ export default function SubmitProjectForm() {
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     setStatus({
       type: "success",
-      message: "Dein E-Mail-Programm wurde mit den eingetragenen Daten geöffnet."
+      message: "Dein E-Mail-Programm wurde mit den eingetragenen Daten ge\u00F6ffnet."
     });
   }
 
@@ -78,6 +80,7 @@ export default function SubmitProjectForm() {
           email: form.email.trim().toLowerCase(),
           project_name: form.projectName.trim(),
           website_url: form.website.trim() || null,
+          card_image_url: form.imageUrl.trim() || null,
           description: form.description.trim(),
           source: "website"
         }
@@ -90,7 +93,7 @@ export default function SubmitProjectForm() {
       setForm(initialForm);
       setStatus({
         type: "success",
-        message: "Dein Projekt wurde in Supabase gespeichert."
+        message: "Dein Projekt wurde in Supabase gespeichert und wartet jetzt auf Freigabe."
       });
     } catch (error) {
       setStatus({
@@ -150,6 +153,17 @@ export default function SubmitProjectForm() {
       </label>
 
       <label className="field">
+        <span className="field-label">Vorschaubild-URL (optional)</span>
+        <input
+          className="input"
+          name="imageUrl"
+          value={form.imageUrl}
+          onChange={updateField}
+          placeholder="https://.../bild.png"
+        />
+      </label>
+
+      <label className="field">
         <span className="field-label">Beschreibung</span>
         <textarea
           className="textarea"
@@ -162,7 +176,7 @@ export default function SubmitProjectForm() {
 
       <div className="button-row">
         <button type="button" className="button button-secondary" onClick={openEmail}>
-          E-Mail öffnen
+          E-Mail &ouml;ffnen
         </button>
         <button type="button" className="button" onClick={saveToSupabase} disabled={isSaving}>
           {isSaving ? "Wird gespeichert..." : "Mit Supabase senden"}

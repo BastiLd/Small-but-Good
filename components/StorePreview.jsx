@@ -3,12 +3,16 @@
 import styles from "./StorePreview.module.css";
 import { openIntroFor } from "./AppIntroOverlay";
 import { withBasePath } from "../lib/basePath";
+import { trackInteraction } from "../lib/interaction-tracking";
 
 export default function StorePreview({ app }) {
   if (!app) return null;
 
   const {
     id,
+    runtimeId,
+    itemSource = "local",
+    detailPath,
     title,
     shortDesc,
     screenshots = [],
@@ -16,10 +20,12 @@ export default function StorePreview({ app }) {
     platformLabel,
     store_url: storeUrl,
     type,
-    typeLabel
+    typeLabel,
+    mediaFit = "contain",
+    mediaBleed = false
   } = app;
 
-  const mainShot = screenshots[0] || "/images/Logo_Nexus_Battle.png";
+  const mainShot = screenshots[0] || "/images/project-placeholder.svg";
   const resolvedMainShot = withBasePath(mainShot);
   const isDiscordBot = type === "discord_bot";
   const isPrivate = app.isPrivate || app.private || app.visibility === "private";
@@ -33,38 +39,44 @@ export default function StorePreview({ app }) {
     app.commands?.slice(0, 4).map((cmd) => cmd.signature || cmd.name) ||
     ["/kampf", "/mission", "/geschichte", "/sammlung"];
 
-  async function trackClick(eventName) {
-    if (typeof window !== "undefined" && window.location.hostname.endsWith("github.io")) {
-      return;
-    }
+  const detailRoute =
+    typeof detailPath !== "undefined" ? detailPath : itemSource === "local" ? `/app/${id}` : null;
 
-    try {
-      await fetch("/api/track-click", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          app_id: id,
-          referrer: typeof window !== "undefined" ? window.location.href : null,
-          event: eventName
-        })
-      });
-    } catch {
-      // Tracking darf die Oberfläche nicht stören.
-    }
+  const screenshotClassName = [
+    styles.screenshot,
+    mediaFit === "cover" ? styles.screenshotCover : "",
+    mediaBleed ? styles.screenshotBleed : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const mediaButtonClassName = [styles.mediaButton, mediaBleed ? styles.mediaButtonBleed : ""]
+    .filter(Boolean)
+    .join(" ");
+
+  async function trackClick(eventType) {
+    await trackInteraction({
+      itemId: runtimeId || id,
+      itemTitle: title,
+      itemSource,
+      eventType,
+      routePath: typeof window !== "undefined" ? window.location.pathname : null
+    });
   }
 
   async function onOpenDetails() {
-    if (!id) return;
+    if (!id && !runtimeId) return;
 
-    await trackClick("open_intro");
+    await trackClick("intro_open");
 
-    const opened = openIntroFor(id, {
+    const opened = openIntroFor(runtimeId || id, {
       imagePublicPath: withBasePath(app.introImage || mainShot),
-      introText: app.introText || shortDesc
+      introText: app.introText || shortDesc,
+      detailPath: detailRoute
     });
 
-    if (!opened) {
-      window.location.href = withBasePath(`/app/${id}`);
+    if (!opened && detailRoute) {
+      window.location.href = withBasePath(detailRoute);
     }
   }
 
@@ -82,7 +94,7 @@ export default function StorePreview({ app }) {
 
     targetUrl.searchParams.set("utm_source", "curatedhub");
     targetUrl.searchParams.set("utm_medium", "store_preview");
-    targetUrl.searchParams.set("utm_campaign", id || "app_card");
+    targetUrl.searchParams.set("utm_campaign", runtimeId || id || "app_card");
 
     window.open(targetUrl.toString(), "_blank", "noopener,noreferrer");
   }
@@ -92,14 +104,14 @@ export default function StorePreview({ app }) {
       <div className={styles.mediaWrap}>
         <button
           type="button"
-          className={styles.mediaButton}
+          className={mediaButtonClassName}
           onClick={onOpenDetails}
           aria-label={`${title} Intro öffnen`}
         >
           <img
             src={resolvedMainShot}
             alt={`${title} Screenshot`}
-            className={styles.screenshot}
+            className={screenshotClassName}
             loading="lazy"
           />
         </button>

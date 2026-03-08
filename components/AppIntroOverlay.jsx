@@ -16,7 +16,8 @@ export function openIntroFor(appId, options = {}) {
       detail: {
         appId,
         imagePublicPath: options.imagePublicPath,
-        introText: options.introText
+        introText: options.introText,
+        detailPath: options.detailPath
       }
     })
   );
@@ -25,7 +26,7 @@ export function openIntroFor(appId, options = {}) {
 }
 
 const AppIntroOverlay = forwardRef(function AppIntroOverlay(
-  { appId, imagePublicPath = "", introText = "" },
+  { appId, imagePublicPath = "", introText = "", detailPath = null },
   ref
 ) {
   const router = useRouter();
@@ -37,7 +38,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
   const [mounted, setMounted] = useState(false);
   const [fadeActive, setFadeActive] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
-  const [payload, setPayload] = useState({ appId, imagePublicPath, introText });
+  const [payload, setPayload] = useState({ appId, imagePublicPath, introText, detailPath });
 
   const getReducedMotion = () => {
     if (typeof window === "undefined" || !window.matchMedia) return false;
@@ -45,7 +46,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
   };
 
   const close = useCallback((shouldRoute) => {
-    const currentAppId = payload?.appId;
+    const targetPath = payload?.detailPath || null;
 
     setContentVisible(false);
     setFadeActive(false);
@@ -61,13 +62,11 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     closeTimerRef.current = setTimeout(() => {
       setMounted(false);
 
-      if (shouldRoute && currentAppId) {
-        const target = `/app/${currentAppId}`;
-
+      if (shouldRoute && targetPath) {
         try {
-          router.push(target);
+          router.push(targetPath);
         } catch {
-          window.location.href = withBasePath(target);
+          window.location.href = withBasePath(targetPath);
         }
       }
     }, reduceMotion ? 0 : 420);
@@ -77,7 +76,9 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     const merged = {
       appId: nextPayload?.appId || appId,
       imagePublicPath: nextPayload?.imagePublicPath || imagePublicPath,
-      introText: nextPayload?.introText || introText
+      introText: nextPayload?.introText || introText,
+      detailPath:
+        typeof nextPayload?.detailPath !== "undefined" ? nextPayload.detailPath : detailPath
     };
 
     if (!merged.appId) return;
@@ -107,7 +108,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       setFadeActive(true);
       setContentVisible(true);
     }
-  }, [appId, imagePublicPath, introText]);
+  }, [appId, detailPath, imagePublicPath, introText]);
 
   useImperativeHandle(ref, () => ({
     open,
@@ -146,7 +147,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       }
     };
 
-    const t = setTimeout(focusFirst, 0);
+    const focusTimer = setTimeout(focusFirst, 0);
 
     const handleKeyDown = (event) => {
       if (!dialogRef.current) return;
@@ -190,7 +191,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      clearTimeout(t);
+      clearTimeout(focusTimer);
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = prevOverflow;
     };
@@ -198,12 +199,14 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
 
   if (!mounted) return null;
 
+  const confirmLabel = payload?.detailPath ? "Weiter" : "Schließen";
+
   return (
     <div
       className={`${styles.overlay} ${fadeActive ? styles.overlayActive : ""}`}
       role="dialog"
       aria-modal="true"
-      aria-label="App-Intro"
+      aria-label="Projekt-Intro"
     >
       <div
         ref={dialogRef}
@@ -228,10 +231,10 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
               ref={confirmButtonRef}
               type="button"
               className={styles.confirmButton}
-              aria-label="Verstanden und zur Projektseite wechseln"
+              aria-label="Intro schließen"
               onClick={() => close(true)}
             >
-              Verstanden
+              {confirmLabel}
             </button>
           </div>
         </div>

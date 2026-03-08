@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import InteractionTracker from "../../../components/InteractionTracker";
 import { APPS, getAppById } from "../../../lib/apps";
 import { withBasePath } from "../../../lib/basePath";
 
@@ -13,9 +14,17 @@ export default function AppDetailPage({ params }) {
 
   return (
     <article className="card detail-wrap" aria-label={`${app.title} Details`}>
+      <InteractionTracker
+        itemId={app.runtimeId || app.id}
+        itemTitle={app.title}
+        itemSource={app.itemSource || "local"}
+        eventType="detail_view"
+        routePath={`/app/${app.id}`}
+      />
+
       <div>
         <img
-          src={withBasePath(app.screenshots?.[0] || "/images/Logo_Nexus_Battle.png")}
+          src={withBasePath(app.screenshots?.[0] || "/images/project-placeholder.svg")}
           alt={`${app.title} Logo`}
           className="detail-image"
         />
@@ -97,7 +106,7 @@ export default function AppDetailPage({ params }) {
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zurück zur Übersicht
+          Zur&uuml;ck zur &Uuml;bersicht
         </Link>
       </div>
     </article>
