@@ -11,27 +11,18 @@ import {
   secondaryMetricKeys
 } from "../lib/creator-dashboard";
 
-const dateFormatter = new Intl.DateTimeFormat("de-AT", {
-  dateStyle: "medium",
-  timeStyle: "short"
-});
-
 function isConfigured() {
   return Boolean(browserSupabase);
 }
 
-function renderStatusLabel(status) {
-  if (status === "approved") return "Angenommen";
-  if (status === "rejected") return "Abgelehnt";
-  return "In Prüfung";
-}
-
 export default function CreatorDashboardClient() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [session, setSession] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingLink, setIsSendingLink] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
   const [status, setStatus] = useState(null);
   const [stats, setStats] = useState({
@@ -44,7 +35,6 @@ export default function CreatorDashboardClient() {
     anmeldungen: 0
   });
   const [queue, setQueue] = useState([]);
-  const [projectRows, setProjectRows] = useState([]);
 
   const sessionEmail = useMemo(() => session?.user?.email || "", [session]);
   const metricCards = useMemo(() => buildMetricCards(stats), [stats]);
@@ -111,7 +101,6 @@ export default function CreatorDashboardClient() {
       if (!active || !dashboardData) return;
 
       setStats(dashboardData.stats);
-      setProjectRows(dashboardData.ownProjectRows);
       setQueue(dashboardData.queue);
       setIsLoading(false);
     }
@@ -168,12 +157,19 @@ export default function CreatorDashboardClient() {
     const { error } = await browserSupabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
+        shouldCreateUser: false,
         emailRedirectTo: typeof window !== "undefined" ? window.location.href : undefined
       }
     });
 
     if (error) {
-      setStatus({ type: "error", message: error.message });
+      setStatus({
+        type: "error",
+        message:
+          error.message === "email rate limit exceeded"
+            ? "Zu viele Login-Mails in kurzer Zeit. Warte kurz oder melde dich mit Passwort an."
+            : error.message
+      });
     } else {
       setStatus({
         type: "success",
@@ -182,6 +178,35 @@ export default function CreatorDashboardClient() {
     }
 
     setIsSendingLink(false);
+  }
+
+  async function signInWithPassword(event) {
+    event.preventDefault();
+
+    if (!browserSupabase || !email.trim() || !password) {
+      setStatus({
+        type: "error",
+        message: "Bitte gib E-Mail und Passwort ein."
+      });
+      return;
+    }
+
+    setIsSigningIn(true);
+    setStatus(null);
+
+    const { error } = await browserSupabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password
+    });
+
+    if (error) {
+      setStatus({ type: "error", message: error.message });
+    } else {
+      setPassword("");
+      setStatus({ type: "success", message: "Du bist jetzt mit Passwort angemeldet." });
+    }
+
+    setIsSigningIn(false);
   }
 
   async function signOut() {
@@ -247,10 +272,10 @@ export default function CreatorDashboardClient() {
       <section className="dashboard-stack">
         <article className="card">
           <h1>Creator-Dashboard</h1>
-          <p>Melde dich an, damit du den Status und die Zahlen deiner Projekte sehen kannst.</p>
+          <p>Melde dich an. Mit Passwort brauchst du danach keine E-Mail mehr.</p>
 
-          <form className="inline-form" onSubmit={sendMagicLink}>
-            <label className="field inline-field">
+          <form className="dashboard-login-form" onSubmit={signInWithPassword}>
+            <label className="field">
               <span className="field-label">E-Mail</span>
               <input
                 className="input"
@@ -260,9 +285,31 @@ export default function CreatorDashboardClient() {
                 placeholder="name@beispiel.de"
               />
             </label>
-            <button type="submit" className="button" disabled={isSendingLink}>
-              {isSendingLink ? "Wird gesendet..." : "Anmelden"}
-            </button>
+
+            <label className="field">
+              <span className="field-label">Passwort</span>
+              <input
+                className="input"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Passwort"
+              />
+            </label>
+
+            <div className="button-row">
+              <button type="submit" className="button" disabled={isSigningIn}>
+                {isSigningIn ? "Meldet an..." : "Mit Passwort anmelden"}
+              </button>
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={isSendingLink}
+                onClick={sendMagicLink}
+              >
+                {isSendingLink ? "Sendet Link..." : "Magic Link senden"}
+              </button>
+            </div>
           </form>
 
           {status ? (
@@ -287,9 +334,14 @@ export default function CreatorDashboardClient() {
             <h1 style={{ marginBottom: "0.35rem" }}>Creator-Dashboard</h1>
             <p style={{ marginTop: 0 }}>Angemeldet als {sessionEmail}</p>
           </div>
-          <button type="button" className="button button-secondary" onClick={signOut}>
-            Abmelden
-          </button>
+          <div className="button-row dashboard-header-actions">
+            <Link href="/creator/dashboard/security" className="button button-secondary">
+              Passwort setzen
+            </Link>
+            <button type="button" className="button button-secondary" onClick={signOut}>
+              Abmelden
+            </button>
+          </div>
         </div>
       </article>
 
@@ -299,7 +351,6 @@ export default function CreatorDashboardClient() {
             <article key={metric.key} className="card stat-card compact-stat-card">
               <span className="stat-label">{metric.label}</span>
               <strong className="stat-value">{metric.value}</strong>
-              <p className="stat-description stat-description-clamp">{metric.description}</p>
               <Link
                 href={`/creator/dashboard/details?metric=${metric.key}`}
                 className="button button-secondary stat-button"
@@ -315,7 +366,6 @@ export default function CreatorDashboardClient() {
             <article key={metric.key} className="card stat-card compact-stat-card">
               <span className="stat-label">{metric.label}</span>
               <strong className="stat-value">{metric.value}</strong>
-              <p className="stat-description stat-description-clamp">{metric.description}</p>
               <Link
                 href={`/creator/dashboard/details?metric=${metric.key}`}
                 className="button button-secondary stat-button"
@@ -327,61 +377,11 @@ export default function CreatorDashboardClient() {
         </div>
       </section>
 
-      <article className="card">
-        <div className="section-header">
-          <div>
-            <h2 style={{ marginBottom: "0.35rem" }}>Meine Projekte</h2>
-            <p style={{ marginTop: 0 }}>
-              Hier siehst du, ob deine Projekte angenommen wurden und wie oft darauf geklickt wurde.
-            </p>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <p>Lade deine Projekte...</p>
-        ) : projectRows.length ? (
-          <div className="queue-list">
-            {projectRows.map((row) => (
-              <article key={row.id} className="queue-item">
-                <div className="queue-copy">
-                  <div className="section-header">
-                    <div>
-                      <h3 style={{ marginBottom: "0.35rem" }}>{row.title}</h3>
-                      <p className="queue-meta" style={{ marginTop: 0 }}>
-                        Eingereicht am {dateFormatter.format(new Date(row.createdAt))}
-                      </p>
-                    </div>
-                    <span className="status-pill">{renderStatusLabel(row.status)}</span>
-                  </div>
-
-                  <div className="project-stats-inline">
-                    <span>Mehr Infos: {row.introOpens}</span>
-                    <span>Detailaufrufe: {row.detailViews}</span>
-                    <span>Externe Klicks: {row.externalClicks}</span>
-                  </div>
-
-                  {row.approvedAt ? (
-                    <p className="queue-meta">
-                      Freigegeben am {dateFormatter.format(new Date(row.approvedAt))}
-                    </p>
-                  ) : null}
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>Du hast bisher noch keine Projekte eingereicht.</p>
-        )}
-      </article>
-
       {isAdmin ? (
         <article className="card">
           <div className="section-header">
             <div>
               <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
-              <p style={{ marginTop: 0 }}>
-                Hier prüfst du neue Projekte und schaltest sie direkt für die Startseite frei.
-              </p>
             </div>
             <span className="status-pill">{queue.length} offen</span>
           </div>
@@ -432,10 +432,6 @@ export default function CreatorDashboardClient() {
                         </a>
                       </p>
                     ) : null}
-
-                    <p className="queue-meta">
-                      Eingereicht am {dateFormatter.format(new Date(row.created_at))}
-                    </p>
                   </div>
 
                   <div className="queue-actions">
