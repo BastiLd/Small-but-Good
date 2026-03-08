@@ -6,7 +6,7 @@ import styles from "./AppIntroOverlay.module.css";
 import { withBasePath } from "../lib/basePath";
 
 const INTRO_EVENT = "app-intro:open";
-const CONTENT_REVEAL_DELAY_MS = 1650;
+const CONTENT_REVEAL_DELAY_MS = 0;
 
 export function openIntroFor(appId, options = {}) {
   if (typeof window === "undefined" || !appId) return false;
@@ -48,7 +48,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
   const close = useCallback((shouldRoute) => {
     const targetPath = payload?.detailPath || null;
 
-    setContentVisible(false);
+    setContentVisible(true);
     setFadeActive(false);
 
     if (closeTimerRef.current) {
