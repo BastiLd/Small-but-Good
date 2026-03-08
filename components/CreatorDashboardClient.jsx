@@ -346,7 +346,7 @@ export default function CreatorDashboardClient() {
       </article>
 
       <section className="dashboard-metrics">
-        <div className="metric-row">
+        <div className="metric-grid">
           {primaryCards.map((metric) => (
             <article key={metric.key} className="card stat-card compact-stat-card">
               <span className="stat-label">{metric.label}</span>
@@ -361,7 +361,7 @@ export default function CreatorDashboardClient() {
           ))}
         </div>
 
-        <div className="metric-row metric-row-centered">
+        <div className="metric-grid metric-grid-secondary">
           {secondaryCards.map((metric) => (
             <article key={metric.key} className="card stat-card compact-stat-card">
               <span className="stat-label">{metric.label}</span>
