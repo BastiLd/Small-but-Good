@@ -6,6 +6,7 @@ import { browserSupabase } from "../lib/supabase-browser";
 import { trackInteraction } from "../lib/interaction-tracking";
 import {
   buildMetricCards,
+  creatorMetricKeys,
   fetchCreatorDashboardData,
   primaryMetricKeys,
   secondaryMetricKeys
@@ -33,7 +34,7 @@ function getFriendlyAuthMessage(error) {
   }
 
   if (error.message === "Signups not allowed for otp") {
-    return "Neue Konten per E-Mail-Link sind in Supabase noch deaktiviert. Aktiviere dafuer Email OTP Signups in den Auth-Einstellungen.";
+    return "Neue Konten per E-Mail-Link sind in Supabase noch deaktiviert. Aktiviere dafür Email OTP Signups in den Auth-Einstellungen.";
   }
 
   return error.message;
@@ -62,8 +63,22 @@ export default function CreatorDashboardClient() {
 
   const sessionEmail = useMemo(() => session?.user?.email || "", [session]);
   const metricCards = useMemo(() => buildMetricCards(stats), [stats]);
-  const primaryCards = metricCards.filter((metric) => primaryMetricKeys.includes(metric.key));
-  const secondaryCards = metricCards.filter((metric) => secondaryMetricKeys.includes(metric.key));
+  const visibleMetricKeys = useMemo(
+    () =>
+      isAdmin
+        ? [...primaryMetricKeys, ...secondaryMetricKeys]
+        : creatorMetricKeys,
+    [isAdmin]
+  );
+  const visibleMetricCards = useMemo(
+    () =>
+      visibleMetricKeys
+        .map((key) => metricCards.find((metric) => metric.key === key))
+        .filter(Boolean),
+    [metricCards, visibleMetricKeys]
+  );
+  const topMetricCards = visibleMetricCards.slice(0, isAdmin ? 4 : 2);
+  const bottomMetricCards = visibleMetricCards.slice(isAdmin ? 4 : 2);
 
   useEffect(() => {
     if (!browserSupabase) {
@@ -100,7 +115,10 @@ export default function CreatorDashboardClient() {
         .eq("email", sessionEmail)
         .maybeSingle();
 
-      if (!active) return;
+      if (!active) {
+        return;
+      }
+
       setIsAdmin(Boolean(data && !error));
     }
 
@@ -122,7 +140,9 @@ export default function CreatorDashboardClient() {
       setIsLoading(true);
       const dashboardData = await fetchCreatorDashboardData(sessionEmail, isAdmin);
 
-      if (!active || !dashboardData) return;
+      if (!active || !dashboardData) {
+        return;
+      }
 
       setStats(dashboardData.stats);
       setQueue(dashboardData.queue);
@@ -203,7 +223,7 @@ export default function CreatorDashboardClient() {
       setStatus({
         type: "success",
         message:
-          "Der E-Mail-Link wurde verschickt. Oeffne die Mail auf diesem Geraet und tippe auf den Link, um dich anzumelden oder ein Konto anzulegen."
+          "Der E-Mail-Link wurde verschickt. Öffne die Mail auf diesem Gerät und tippe auf den Link, um dich anzumelden oder ein Konto anzulegen."
       });
     }
 
@@ -261,7 +281,7 @@ export default function CreatorDashboardClient() {
         type: "success",
         message: data.session
           ? "Konto erstellt und direkt angemeldet."
-          : "Konto erstellt. Bitte bestaetige jetzt die E-Mail in deinem Postfach und melde dich danach an."
+          : "Konto erstellt. Bitte bestätige jetzt die E-Mail in deinem Postfach und melde dich danach an."
       });
     }
 
@@ -339,7 +359,7 @@ export default function CreatorDashboardClient() {
             <div className="auth-option-card">
               <strong>Mit E-Mail-Link</strong>
               <p>
-                Gib nur deine E-Mail ein und druecke dann auf den Link-Button. Die Mail dient zum
+                Gib nur deine E-Mail ein und drücke dann auf den Link-Button. Die Mail dient zum
                 Anmelden oder Registrieren.
               </p>
             </div>
@@ -378,7 +398,7 @@ export default function CreatorDashboardClient() {
 
             <div className="button-row">
               <button type="submit" className="button" disabled={isSigningIn}>
-                {isSigningIn ? "Prueft Konto..." : "Anmelden / Registrieren"}
+                {isSigningIn ? "Prüft Konto..." : "Anmelden / Registrieren"}
               </button>
               <button
                 type="button"
@@ -424,9 +444,20 @@ export default function CreatorDashboardClient() {
         </div>
       </article>
 
+      <article className="card">
+        <h2 style={{ marginTop: 0, marginBottom: "0.45rem" }}>
+          {isAdmin ? "Dashboard-Übersicht" : "Deine Projektstatistiken"}
+        </h2>
+        <p style={{ marginTop: 0 }}>
+          {isAdmin
+            ? "Hier siehst du alle Kennzahlen inklusive Freigaben und Moderation."
+            : "Hier siehst du nur die Kennzahlen, die direkt deine Projekte betreffen."}
+        </p>
+      </article>
+
       <section className="dashboard-metrics">
         <div className="metric-grid">
-          {primaryCards.map((metric) => (
+          {topMetricCards.map((metric) => (
             <article key={metric.key} className="card stat-card compact-stat-card">
               <span className="stat-label">{metric.label}</span>
               <strong className="stat-value">{metric.value}</strong>
@@ -440,20 +471,22 @@ export default function CreatorDashboardClient() {
           ))}
         </div>
 
-        <div className="metric-grid metric-grid-secondary">
-          {secondaryCards.map((metric) => (
-            <article key={metric.key} className="card stat-card compact-stat-card">
-              <span className="stat-label">{metric.label}</span>
-              <strong className="stat-value">{metric.value}</strong>
-              <Link
-                href={`/creator/dashboard/details?metric=${metric.key}`}
-                className="button button-secondary stat-button"
-              >
-                {metric.buttonLabel}
-              </Link>
-            </article>
-          ))}
-        </div>
+        {bottomMetricCards.length ? (
+          <div className="metric-grid metric-grid-secondary">
+            {bottomMetricCards.map((metric) => (
+              <article key={metric.key} className="card stat-card compact-stat-card">
+                <span className="stat-label">{metric.label}</span>
+                <strong className="stat-value">{metric.value}</strong>
+                <Link
+                  href={`/creator/dashboard/details?metric=${metric.key}`}
+                  className="button button-secondary stat-button"
+                >
+                  {metric.buttonLabel}
+                </Link>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       {isAdmin ? (

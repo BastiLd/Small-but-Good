@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { browserSupabase } from "../lib/supabase-browser";
-import { buildMetricDetail, metricDefinitions } from "../lib/creator-dashboard";
+import {
+  buildMetricDetail,
+  creatorMetricKeys,
+  metricDefinitions
+} from "../lib/creator-dashboard";
 
 function isConfigured() {
   return Boolean(browserSupabase);
@@ -14,13 +18,17 @@ export default function CreatorMetricDetailClient() {
   const searchParams = useSearchParams();
   const metricKey = searchParams.get("metric") || "aufrufe";
   const [session, setSession] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [detail, setDetail] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const resolvedMetricKey = useMemo(
-    () => (metricDefinitions[metricKey] ? metricKey : "aufrufe"),
-    [metricKey]
-  );
+  const resolvedMetricKey = useMemo(() => {
+    if (!metricDefinitions[metricKey]) {
+      return "aufrufe";
+    }
+
+    return metricKey;
+  }, [metricKey]);
 
   useEffect(() => {
     if (!browserSupabase) {
@@ -32,6 +40,35 @@ export default function CreatorMetricDetailClient() {
       setSession(data.session || null);
     });
   }, []);
+
+  useEffect(() => {
+    if (!browserSupabase || !session?.user?.email) {
+      setIsAdmin(false);
+      return;
+    }
+
+    let active = true;
+
+    async function loadRole() {
+      const { data, error } = await browserSupabase
+        .from("admin_users")
+        .select("email")
+        .eq("email", session.user.email)
+        .maybeSingle();
+
+      if (!active) {
+        return;
+      }
+
+      setIsAdmin(Boolean(data && !error));
+    }
+
+    loadRole();
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
 
   useEffect(() => {
     if (!browserSupabase || !session?.user?.email) {
@@ -52,7 +89,10 @@ export default function CreatorMetricDetailClient() {
         return;
       }
 
-      setDetail(buildMetricDetail(resolvedMetricKey, dashboardData));
+      const metricIsAllowed = isAdmin || creatorMetricKeys.includes(resolvedMetricKey);
+      const safeMetricKey = metricIsAllowed ? resolvedMetricKey : "aufrufe";
+
+      setDetail(buildMetricDetail(safeMetricKey, dashboardData));
       setIsLoading(false);
     }
 
@@ -61,7 +101,7 @@ export default function CreatorMetricDetailClient() {
     return () => {
       active = false;
     };
-  }, [resolvedMetricKey, session]);
+  }, [isAdmin, resolvedMetricKey, session]);
 
   if (!isConfigured()) {
     return (

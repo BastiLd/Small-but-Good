@@ -48,6 +48,8 @@ alter table submission_requests add column if not exists reviewed_at timestamptz
 alter table submission_requests add column if not exists approved_at timestamptz;
 alter table submission_requests add column if not exists public_slug text;
 alter table submission_requests add column if not exists card_image_url text;
+alter table interaction_events add column if not exists actor_email text;
+alter table interaction_events add column if not exists actor_user_id uuid;
 
 create table if not exists interaction_events (
   id bigserial primary key,
@@ -76,6 +78,8 @@ create index if not exists idx_interaction_events_created_at
   on interaction_events(created_at desc);
 create index if not exists idx_interaction_events_type_created_at
   on interaction_events(event_type, created_at desc);
+create index if not exists idx_interaction_events_actor_email
+  on interaction_events(actor_email);
 
 alter table submission_requests enable row level security;
 alter table interaction_events enable row level security;
