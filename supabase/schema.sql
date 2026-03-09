@@ -1,5 +1,26 @@
 create extension if not exists pgcrypto;
 
+create or replace function public.slugify_text(input text)
+returns text
+language sql
+immutable
+as $$
+  select left(
+    trim(
+      both '-'
+      from regexp_replace(
+        lower(
+          translate(coalesce(input, ''), 'äöüßÄÖÜ', 'aoussAOU')
+        ),
+        '[^a-z0-9]+',
+        '-',
+        'g'
+      )
+    ),
+    60
+  );
+$$;
+
 create table if not exists creators (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
@@ -7,6 +28,10 @@ create table if not exists creators (
   stripe_account_id text,
   created_at timestamptz not null default now()
 );
+
+alter table creators add column if not exists auth_user_id uuid;
+alter table creators add column if not exists slug text;
+alter table creators add column if not exists bio text;
 
 create table if not exists apps (
   id uuid primary key default gen_random_uuid(),
@@ -51,8 +76,7 @@ alter table submission_requests add column if not exists card_image_url text;
 alter table submission_requests add column if not exists submitted_with_account boolean not null default false;
 alter table submission_requests add column if not exists account_email text;
 alter table submission_requests add column if not exists account_user_id uuid;
-alter table interaction_events add column if not exists actor_email text;
-alter table interaction_events add column if not exists actor_user_id uuid;
+alter table submission_requests add column if not exists creator_id uuid references creators(id) on delete set null;
 
 create table if not exists interaction_events (
   id bigserial primary key,
@@ -66,10 +90,21 @@ create table if not exists interaction_events (
   created_at timestamptz not null default now()
 );
 
+alter table interaction_events add column if not exists actor_email text;
+alter table interaction_events add column if not exists actor_user_id uuid;
+
 create table if not exists admin_users (
   email text primary key,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists idx_creators_auth_user_id
+  on creators(auth_user_id)
+  where auth_user_id is not null;
+
+create unique index if not exists idx_creators_slug
+  on creators(slug)
+  where slug is not null;
 
 create index if not exists idx_apps_creator on apps(creator_id);
 create index if not exists idx_payments_creator on payments(creator_id, created_at desc);
@@ -79,6 +114,8 @@ create unique index if not exists idx_submission_requests_public_slug
   where public_slug is not null;
 create index if not exists idx_submission_requests_account_email
   on submission_requests(account_email);
+create index if not exists idx_submission_requests_creator_id
+  on submission_requests(creator_id);
 create index if not exists idx_interaction_events_created_at
   on interaction_events(created_at desc);
 create index if not exists idx_interaction_events_type_created_at
@@ -86,9 +123,75 @@ create index if not exists idx_interaction_events_type_created_at
 create index if not exists idx_interaction_events_actor_email
   on interaction_events(actor_email);
 
+create or replace view public_projects as
+select
+  sr.id,
+  sr.project_name,
+  sr.description,
+  sr.website_url,
+  sr.card_image_url,
+  coalesce(
+    sr.public_slug,
+    public.slugify_text(sr.project_name) || '-' || substring(replace(sr.id::text, '-', '') from 1 for 8)
+  ) as slug,
+  sr.approved_at,
+  c.slug as creator_slug,
+  c.display_name as creator_display_name
+from submission_requests sr
+left join creators c on c.id = sr.creator_id
+where sr.status = 'approved';
+
+create or replace view public_creator_profiles as
+select
+  id,
+  slug,
+  display_name,
+  bio,
+  created_at
+from creators
+where slug is not null;
+
+grant select on public_projects to anon, authenticated;
+grant select on public_creator_profiles to anon, authenticated;
+
+alter table creators enable row level security;
 alter table submission_requests enable row level security;
 alter table interaction_events enable row level security;
 alter table admin_users enable row level security;
+
+drop policy if exists creator_self_select on creators;
+create policy creator_self_select
+on creators
+for select
+to authenticated
+using (
+  auth_user_id = auth.uid()
+  or lower(email) = lower(auth.email())
+);
+
+drop policy if exists creator_self_insert on creators;
+create policy creator_self_insert
+on creators
+for insert
+to authenticated
+with check (
+  auth_user_id = auth.uid()
+  and lower(email) = lower(auth.email())
+);
+
+drop policy if exists creator_self_update on creators;
+create policy creator_self_update
+on creators
+for update
+to authenticated
+using (
+  auth_user_id = auth.uid()
+  or lower(email) = lower(auth.email())
+)
+with check (
+  auth_user_id = auth.uid()
+  and lower(email) = lower(auth.email())
+);
 
 drop policy if exists public_submission_insert on submission_requests;
 create policy public_submission_insert
@@ -100,12 +203,21 @@ with check (
   and status = 'pending'
 );
 
-drop policy if exists public_submission_select_approved on submission_requests;
-create policy public_submission_select_approved
+drop policy if exists creator_submission_select on submission_requests;
+create policy creator_submission_select
 on submission_requests
 for select
-to anon, authenticated
-using (status = 'approved');
+to authenticated
+using (
+  lower(email) = lower(auth.email())
+  or lower(coalesce(account_email, '')) = lower(auth.email())
+  or account_user_id = auth.uid()
+  or creator_id in (
+    select id
+    from creators
+    where creators.auth_user_id = auth.uid()
+  )
+);
 
 drop policy if exists admin_submission_select on submission_requests;
 create policy admin_submission_select

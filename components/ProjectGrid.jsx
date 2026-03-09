@@ -4,25 +4,7 @@ import { useEffect, useState } from "react";
 import StorePreview from "./StorePreview";
 import InteractionTracker from "./InteractionTracker";
 import { browserSupabase } from "../lib/supabase-browser";
-import { submissionToApp } from "../lib/project-utils";
-
-async function fetchApprovedProjects() {
-  if (!browserSupabase) {
-    return [];
-  }
-
-  const { data, error } = await browserSupabase
-    .from("submission_requests")
-    .select("id, project_name, description, website_url, card_image_url, public_slug, approved_at")
-    .eq("status", "approved")
-    .order("approved_at", { ascending: false });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map(submissionToApp);
-}
+import { fetchPublicProjects } from "../lib/public-projects";
 
 export default function ProjectGrid({ initialApps }) {
   const [communityApps, setCommunityApps] = useState([]);
@@ -31,7 +13,7 @@ export default function ProjectGrid({ initialApps }) {
     let active = true;
 
     async function loadApprovedProjects() {
-      const approvedApps = await fetchApprovedProjects();
+      const approvedApps = await fetchPublicProjects();
       if (active) {
         setCommunityApps(approvedApps);
       }

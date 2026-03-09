@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { browserSupabase } from "../lib/supabase-browser";
+import { ensureCreatorProfile } from "../lib/creator-profile";
 import TextPromptOverlay from "./TextPromptOverlay";
 
 const DRAFT_STORAGE_KEY = "submit-project-form-draft";
@@ -177,7 +178,7 @@ export default function SubmitProjectForm() {
       return null;
     }
 
-    if (/account_email|account_user_id|submitted_with_account/i.test(error.message || "")) {
+    if (/account_email|account_user_id|submitted_with_account|creator_id/i.test(error.message || "")) {
       const fallbackPayload = {
         creator_name: payload.creator_name,
         email: payload.email,
@@ -215,6 +216,15 @@ export default function SubmitProjectForm() {
     setStatus(null);
 
     try {
+      let creatorId = null;
+
+      if (withAccount && session?.user) {
+        creatorId = await ensureCreatorProfile({
+          user: session.user,
+          fallbackName: form.creatorName.trim()
+        });
+      }
+
       const payload = {
         creator_name: form.creatorName.trim(),
         email: form.email.trim().toLowerCase(),
@@ -225,7 +235,8 @@ export default function SubmitProjectForm() {
         source: "website",
         submitted_with_account: Boolean(withAccount && session?.user),
         account_email: withAccount && session?.user?.email ? session.user.email.toLowerCase() : null,
-        account_user_id: withAccount && session?.user?.id ? session.user.id : null
+        account_user_id: withAccount && session?.user?.id ? session.user.id : null,
+        creator_id: creatorId
       };
 
       const error = await insertSubmission(payload);
@@ -237,9 +248,10 @@ export default function SubmitProjectForm() {
       clearDraft();
       setStatus({
         type: "success",
-        message: withAccount && session?.user
-          ? "Dein Projekt wurde mit deinem Account gespeichert und wartet jetzt auf Freigabe."
-          : "Dein Projekt wurde in Supabase gespeichert und wartet jetzt auf Freigabe."
+        message:
+          withAccount && session?.user
+            ? "Dein Projekt wurde mit deinem Account gespeichert und wartet jetzt auf Freigabe."
+            : "Dein Projekt wurde in Supabase gespeichert und wartet jetzt auf Freigabe."
       });
     } catch (error) {
       setStatus({
