@@ -15,6 +15,30 @@ function isConfigured() {
   return Boolean(browserSupabase);
 }
 
+function getFriendlyAuthMessage(error) {
+  if (!error?.message) {
+    return "Die Anmeldung hat nicht funktioniert. Bitte versuche es erneut.";
+  }
+
+  if (error.message === "email rate limit exceeded") {
+    return "Zu viele Login-Mails in kurzer Zeit. Warte kurz und versuche es dann erneut.";
+  }
+
+  if (error.message === "Invalid login credentials") {
+    return "Diese Kombination aus E-Mail und Passwort wurde nicht gefunden.";
+  }
+
+  if (error.message === "User already registered") {
+    return "Zu dieser E-Mail gibt es bereits ein Konto. Melde dich mit Passwort oder per E-Mail-Link an.";
+  }
+
+  if (error.message === "Signups not allowed for otp") {
+    return "Neue Konten per E-Mail-Link sind in Supabase noch deaktiviert. Aktiviere dafuer Email OTP Signups in den Auth-Einstellungen.";
+  }
+
+  return error.message;
+}
+
 export default function CreatorDashboardClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -139,7 +163,15 @@ export default function CreatorDashboardClient() {
   async function sendMagicLink(event) {
     event.preventDefault();
 
-    if (!browserSupabase || !email.trim()) {
+    if (!browserSupabase) {
+      return;
+    }
+
+    if (!email.trim()) {
+      setStatus({
+        type: "error",
+        message: "Bitte gib zuerst deine E-Mail ein."
+      });
       return;
     }
 
@@ -157,7 +189,7 @@ export default function CreatorDashboardClient() {
     const { error } = await browserSupabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
-        shouldCreateUser: false,
+        shouldCreateUser: true,
         emailRedirectTo: typeof window !== "undefined" ? window.location.href : undefined
       }
     });
@@ -165,22 +197,20 @@ export default function CreatorDashboardClient() {
     if (error) {
       setStatus({
         type: "error",
-        message:
-          error.message === "email rate limit exceeded"
-            ? "Zu viele Login-Mails in kurzer Zeit. Warte kurz oder melde dich mit Passwort an."
-            : error.message
+        message: getFriendlyAuthMessage(error)
       });
     } else {
       setStatus({
         type: "success",
-        message: "Der Magic Link wurde verschickt. Bitte öffne die E-Mail und melde dich an."
+        message:
+          "Der E-Mail-Link wurde verschickt. Oeffne die Mail auf diesem Geraet und tippe auf den Link, um dich anzumelden oder ein Konto anzulegen."
       });
     }
 
     setIsSendingLink(false);
   }
 
-  async function signInWithPassword(event) {
+  async function continueWithPassword(event) {
     event.preventDefault();
 
     if (!browserSupabase || !email.trim() || !password) {
@@ -194,16 +224,45 @@ export default function CreatorDashboardClient() {
     setIsSigningIn(true);
     setStatus(null);
 
-    const { error } = await browserSupabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const { error: signInError } = await browserSupabase.auth.signInWithPassword({
+      email: normalizedEmail,
       password
     });
 
-    if (error) {
-      setStatus({ type: "error", message: error.message });
-    } else {
+    if (!signInError) {
       setPassword("");
       setStatus({ type: "success", message: "Du bist jetzt mit Passwort angemeldet." });
+      setIsSigningIn(false);
+      return;
+    }
+
+    const shouldTrySignUp =
+      signInError.message === "Invalid login credentials" ||
+      signInError.message === "Email not confirmed";
+
+    if (!shouldTrySignUp) {
+      setStatus({ type: "error", message: getFriendlyAuthMessage(signInError) });
+      setIsSigningIn(false);
+      return;
+    }
+
+    const { data, error: signUpError } = await browserSupabase.auth.signUp({
+      email: normalizedEmail,
+      password
+    });
+
+    if (signUpError) {
+      setStatus({ type: "error", message: getFriendlyAuthMessage(signUpError) });
+    } else {
+      setPassword("");
+      setStatus({
+        type: "success",
+        message: data.session
+          ? "Konto erstellt und direkt angemeldet."
+          : "Konto erstellt. Bitte bestaetige jetzt die E-Mail in deinem Postfach und melde dich danach an."
+      });
     }
 
     setIsSigningIn(false);
@@ -272,9 +331,29 @@ export default function CreatorDashboardClient() {
       <section className="dashboard-stack">
         <article className="card">
           <h1>Creator-Dashboard</h1>
-          <p>Melde dich an. Mit Passwort brauchst du danach keine E-Mail mehr.</p>
+          <p className="auth-intro">
+            Melde dich an oder erstelle direkt ein Konto. Du hast zwei Wege:
+          </p>
 
-          <form className="dashboard-login-form" onSubmit={signInWithPassword}>
+          <div className="auth-options">
+            <div className="auth-option-card">
+              <strong>Mit E-Mail-Link</strong>
+              <p>
+                Gib nur deine E-Mail ein und druecke dann auf den Link-Button. Die Mail dient zum
+                Anmelden oder Registrieren.
+              </p>
+            </div>
+
+            <div className="auth-option-card">
+              <strong>Mit Passwort</strong>
+              <p>
+                Gib E-Mail und Passwort ein. Der Button meldet dich an oder erstellt automatisch
+                ein neues Konto.
+              </p>
+            </div>
+          </div>
+
+          <form className="dashboard-login-form" onSubmit={continueWithPassword}>
             <label className="field">
               <span className="field-label">E-Mail</span>
               <input
@@ -299,7 +378,7 @@ export default function CreatorDashboardClient() {
 
             <div className="button-row">
               <button type="submit" className="button" disabled={isSigningIn}>
-                {isSigningIn ? "Meldet an..." : "Mit Passwort anmelden"}
+                {isSigningIn ? "Prueft Konto..." : "Anmelden / Registrieren"}
               </button>
               <button
                 type="button"
@@ -307,7 +386,7 @@ export default function CreatorDashboardClient() {
                 disabled={isSendingLink}
                 onClick={sendMagicLink}
               >
-                {isSendingLink ? "Sendet Link..." : "Magic Link senden"}
+                {isSendingLink ? "Sendet Link..." : "Login-Link per E-Mail senden"}
               </button>
             </div>
           </form>

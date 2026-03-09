@@ -35,7 +35,9 @@ export default function Navbar() {
         <nav className="nav-links" aria-label="Hauptnavigation">
           <Link href="/">Startseite</Link>
           <Link href="/submit">Projekt einreichen</Link>
-          <Link href="/creator/dashboard">{hasSession ? "Mein Dashboard" : "Anmelden"}</Link>
+          <Link href="/creator/dashboard">
+            {hasSession ? "Mein Dashboard" : "Anmelden/Registrieren"}
+          </Link>
         </nav>
       </div>
     </header>
