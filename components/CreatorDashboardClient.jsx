@@ -7,6 +7,7 @@ import { trackInteraction } from "../lib/interaction-tracking";
 import {
   buildMetricCards,
   creatorMetricKeys,
+  dashboardRangeOptions,
   fetchCreatorDashboardData,
   primaryMetricKeys,
   secondaryMetricKeys
@@ -41,6 +42,20 @@ function getFriendlyAuthMessage(error) {
   return error.message;
 }
 
+function formatShortDate(value) {
+  if (!value) {
+    return "Noch keine Aktivität";
+  }
+
+  return new Intl.DateTimeFormat("de-AT", {
+    dateStyle: "medium"
+  }).format(new Date(value));
+}
+
+function buildDetailsHref(metricKey, rangeKey) {
+  return `/creator/dashboard/details?metric=${metricKey}&range=${rangeKey}`;
+}
+
 export default function CreatorDashboardClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +67,8 @@ export default function CreatorDashboardClient() {
   const [activeRowId, setActiveRowId] = useState(null);
   const [selectedQueueItem, setSelectedQueueItem] = useState(null);
   const [status, setStatus] = useState(null);
+  const [activeRangeKey, setActiveRangeKey] = useState("all");
+  const [dashboardData, setDashboardData] = useState(null);
   const [stats, setStats] = useState({
     submissions: 0,
     klicks: 0,
@@ -79,8 +96,32 @@ export default function CreatorDashboardClient() {
         .filter(Boolean),
     [metricCards, visibleMetricKeys]
   );
-  const topMetricCards = visibleMetricCards.slice(0, isAdmin ? 4 : 2);
-  const bottomMetricCards = visibleMetricCards.slice(isAdmin ? 4 : 2);
+  const topMetricCards = visibleMetricCards.slice(0, isAdmin ? 4 : visibleMetricCards.length);
+  const bottomMetricCards = isAdmin ? visibleMetricCards.slice(4) : [];
+  const activeRangeLabel = useMemo(
+    () =>
+      dashboardData?.activeRange?.label ||
+      dashboardRangeOptions.find((range) => range.key === activeRangeKey)?.label ||
+      "Alle Zeit",
+    [activeRangeKey, dashboardData]
+  );
+  const publishedProjects = dashboardData?.publishedProjects || [];
+  const pendingSubmissions = dashboardData?.pendingSubmissions || [];
+  const releasedProjectCount =
+    (dashboardData?.ownApprovedSubmissions?.length || 0) + (dashboardData?.ownedLocalApps?.length || 0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const rangeFromUrl = params.get("range");
+
+    if (dashboardRangeOptions.some((range) => range.key === rangeFromUrl)) {
+      setActiveRangeKey(rangeFromUrl);
+    }
+  }, []);
 
   useEffect(() => {
     if (!browserSupabase) {
@@ -132,6 +173,22 @@ export default function CreatorDashboardClient() {
   }, [sessionEmail]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextUrl = new URL(window.location.href);
+
+    if (activeRangeKey === "all") {
+      nextUrl.searchParams.delete("range");
+    } else {
+      nextUrl.searchParams.set("range", activeRangeKey);
+    }
+
+    window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+  }, [activeRangeKey]);
+
+  useEffect(() => {
     if (!browserSupabase || !sessionEmail) {
       return;
     }
@@ -140,21 +197,22 @@ export default function CreatorDashboardClient() {
 
     async function loadDashboard() {
       setIsLoading(true);
-      const dashboardData = await fetchCreatorDashboardData(sessionEmail, isAdmin);
+      const nextDashboardData = await fetchCreatorDashboardData(sessionEmail, isAdmin, activeRangeKey);
 
-      if (!active || !dashboardData) {
+      if (!active || !nextDashboardData) {
         return;
       }
 
-      setStats(dashboardData.stats);
-      setQueue(dashboardData.queue);
+      setDashboardData(nextDashboardData);
+      setStats(nextDashboardData.stats);
+      setQueue(nextDashboardData.queue);
       setIsLoading(false);
     }
 
     loadDashboard();
 
     const submissionsChannel = browserSupabase
-      .channel("creator-dashboard-submissions")
+      .channel(`creator-dashboard-submissions-${activeRangeKey}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "submission_requests" },
@@ -165,7 +223,7 @@ export default function CreatorDashboardClient() {
       .subscribe();
 
     const interactionsChannel = browserSupabase
-      .channel("creator-dashboard-interactions")
+      .channel(`creator-dashboard-interactions-${activeRangeKey}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "interaction_events" },
@@ -180,7 +238,7 @@ export default function CreatorDashboardClient() {
       browserSupabase.removeChannel(submissionsChannel);
       browserSupabase.removeChannel(interactionsChannel);
     };
-  }, [isAdmin, sessionEmail]);
+  }, [activeRangeKey, isAdmin, sessionEmail]);
 
   async function sendMagicLink(event) {
     event.preventDefault();
@@ -338,6 +396,10 @@ export default function CreatorDashboardClient() {
     setActiveRowId(null);
   }
 
+  function handleRangeChange(nextRangeKey) {
+    setActiveRangeKey(nextRangeKey);
+  }
+
   if (!isConfigured()) {
     return (
       <section className="dashboard-stack">
@@ -431,9 +493,12 @@ export default function CreatorDashboardClient() {
   return (
     <>
       <section className="dashboard-stack">
-        <article className="card">
+        <article className={`card ${isAdmin ? "" : "creator-dashboard-hero"}`.trim()}>
           <div className="admin-bar">
             <div>
+              <p className="dashboard-eyebrow">
+                {isAdmin ? "Moderation und Übersicht" : "Dein Creator-Bereich"}
+              </p>
               <h1 style={{ marginBottom: "0.35rem" }}>Creator-Dashboard</h1>
               <p style={{ marginTop: 0 }}>Angemeldet als {sessionEmail}</p>
             </div>
@@ -446,43 +511,83 @@ export default function CreatorDashboardClient() {
               </button>
             </div>
           </div>
+
+          {!isAdmin ? (
+            <div className="creator-dashboard-highlight-grid">
+              <div className="creator-highlight-box">
+                <span className="creator-highlight-label">Freigegebene Projekte</span>
+                <strong className="creator-highlight-value">{releasedProjectCount}</strong>
+              </div>
+              <div className="creator-highlight-box">
+                <span className="creator-highlight-label">Offene Einreichungen</span>
+                <strong className="creator-highlight-value">{pendingSubmissions.length}</strong>
+              </div>
+              <div className="creator-highlight-box">
+                <span className="creator-highlight-label">Aktiver Zeitraum</span>
+                <strong className="creator-highlight-value creator-highlight-value-small">
+                  {activeRangeLabel}
+                </strong>
+              </div>
+            </div>
+          ) : null}
         </article>
 
-        <article className="card">
-          <h2 style={{ marginTop: 0, marginBottom: "0.45rem" }}>
-            {isAdmin ? "Dashboard-Übersicht" : "Deine Projektstatistiken"}
-          </h2>
-          <p style={{ marginTop: 0 }}>
-            {isAdmin
-              ? "Hier siehst du alle Kennzahlen inklusive Freigaben und Moderation."
-              : "Hier siehst du nur die Kennzahlen, die direkt deine Projekte betreffen."}
-          </p>
-        </article>
+        <article className={`card ${isAdmin ? "" : "creator-dashboard-summary-card"}`.trim()}>
+          <div className="section-header">
+            <div>
+              <h2 style={{ marginTop: 0, marginBottom: "0.45rem" }}>
+                {isAdmin ? "Dashboard-Übersicht" : "Deine Projektstatistiken"}
+              </h2>
+              <p style={{ marginTop: 0 }}>
+                {isAdmin
+                  ? "Hier siehst du alle Kennzahlen inklusive Freigaben und Moderation."
+                  : "Hier siehst du nur die Kennzahlen, die direkt deine Projekte betreffen."}
+              </p>
+            </div>
 
-        <section className="dashboard-metrics">
-          <div className="metric-grid">
-            {topMetricCards.map((metric) => (
-              <article key={metric.key} className="card stat-card compact-stat-card">
-                <span className="stat-label">{metric.label}</span>
-                <strong className="stat-value">{metric.value}</strong>
-                <Link
-                  href={`/creator/dashboard/details?metric=${metric.key}`}
-                  className="button button-secondary stat-button"
+            <div className="dashboard-range-picker" role="tablist" aria-label="Zeitraum wählen">
+              {dashboardRangeOptions.map((range) => (
+                <button
+                  key={range.key}
+                  type="button"
+                  className={`dashboard-range-chip ${
+                    activeRangeKey === range.key ? "dashboard-range-chip-active" : ""
+                  }`.trim()}
+                  onClick={() => handleRangeChange(range.key)}
                 >
-                  {metric.buttonLabel}
-                </Link>
-              </article>
-            ))}
+                  {range.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {bottomMetricCards.length ? (
-            <div className="metric-grid metric-grid-secondary">
-              {bottomMetricCards.map((metric) => (
+          {!isAdmin ? (
+            <p className="dashboard-range-note">
+              Der Zeitraum wirkt auf Aufrufe, Klicks, Mehr Infos und Originalseite. Einreichungen
+              und Freigaben bleiben Gesamtwerte.
+            </p>
+          ) : null}
+        </article>
+
+        {status ? (
+          <p
+            className={`form-status ${
+              status.type === "success" ? "form-status-success" : "form-status-error"
+            }`}
+          >
+            {status.message}
+          </p>
+        ) : null}
+
+        {isAdmin ? (
+          <section className="dashboard-metrics">
+            <div className="metric-grid metric-grid-admin">
+              {topMetricCards.map((metric) => (
                 <article key={metric.key} className="card stat-card compact-stat-card">
                   <span className="stat-label">{metric.label}</span>
                   <strong className="stat-value">{metric.value}</strong>
                   <Link
-                    href={`/creator/dashboard/details?metric=${metric.key}`}
+                    href={buildDetailsHref(metric.key, activeRangeKey)}
                     className="button button-secondary stat-button"
                   >
                     {metric.buttonLabel}
@@ -490,27 +595,103 @@ export default function CreatorDashboardClient() {
                 </article>
               ))}
             </div>
-          ) : null}
-        </section>
+
+            {bottomMetricCards.length ? (
+              <div className="metric-grid metric-grid-secondary">
+                {bottomMetricCards.map((metric) => (
+                  <article key={metric.key} className="card stat-card compact-stat-card">
+                    <span className="stat-label">{metric.label}</span>
+                    <strong className="stat-value">{metric.value}</strong>
+                    <Link
+                      href={buildDetailsHref(metric.key, activeRangeKey)}
+                      className="button button-secondary stat-button"
+                    >
+                      {metric.buttonLabel}
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : (
+          <section className="creator-dashboard-shell">
+            <div className="dashboard-metrics">
+              <div className="metric-grid metric-grid-creator">
+                {visibleMetricCards.map((metric) => (
+                  <article key={metric.key} className="card stat-card creator-stat-card">
+                    <span className="stat-label">{metric.label}</span>
+                    <strong className="stat-value">{metric.value}</strong>
+                    <p className="creator-stat-copy">{metric.description}</p>
+                    <Link
+                      href={buildDetailsHref(metric.key, activeRangeKey)}
+                      className="button button-secondary stat-button"
+                    >
+                      {metric.buttonLabel}
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            <article className="card creator-project-panel">
+              <div className="section-header">
+                <div>
+                  <h2 style={{ marginBottom: "0.35rem" }}>Deine Projekte</h2>
+                  <p style={{ marginTop: 0 }}>
+                    Im Zeitraum <strong>{activeRangeLabel}</strong> siehst du hier, welche Projekte
+                    gerade am meisten Interaktionen haben.
+                  </p>
+                </div>
+                <span className="status-pill">{publishedProjects.length} sichtbar</span>
+              </div>
+
+              {isLoading ? (
+                <p>Lade deine Projekte...</p>
+              ) : publishedProjects.length ? (
+                <div className="creator-project-list">
+                  {publishedProjects.map((project) => (
+                    <article key={project.id} className="creator-project-item">
+                      <div>
+                        <div className="creator-project-meta-row">
+                          <span className="status-pill creator-project-status">
+                            {project.statusLabel}
+                          </span>
+                          <span className="creator-project-activity">
+                            {project.activityCount} Interaktionen
+                          </span>
+                        </div>
+                        <h3>{project.title}</h3>
+                        <p>{project.meta}</p>
+                        <small>Letzte Aktivität: {formatShortDate(project.latestActivity)}</small>
+                      </div>
+                      <Link href={project.href} className="button button-secondary">
+                        Projekt ansehen
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p>
+                  Sobald eines deiner Projekte freigegeben ist oder Interaktionen gesammelt werden,
+                  erscheint es hier.
+                </p>
+              )}
+            </article>
+          </section>
+        )}
 
         {isAdmin ? (
           <article className="card">
             <div className="section-header">
               <div>
                 <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
+                <p style={{ marginTop: 0 }}>
+                  Standardmäßig bleiben die Karten kompakt. Über Infos siehst du alle Details zur
+                  Einreichung.
+                </p>
               </div>
               <span className="status-pill">{queue.length} offen</span>
             </div>
-
-            {status ? (
-              <p
-                className={`form-status ${
-                  status.type === "success" ? "form-status-success" : "form-status-error"
-                }`}
-              >
-                {status.message}
-              </p>
-            ) : null}
 
             {isLoading ? (
               <p>Lade Moderation...</p>
@@ -528,6 +709,19 @@ export default function CreatorDashboardClient() {
                         </div>
                         <span className="status-pill status-pill-pending">Ausstehend</span>
                       </div>
+
+                      {row.duplicateSummary ? (
+                        <div className="queue-duplicate-box">
+                          <strong>{row.duplicateSummary}</strong>
+                          <div className="queue-duplicate-list">
+                            {row.duplicateMatches.slice(0, 3).map((match) => (
+                              <span key={`${row.id}-${match.id}`} className="queue-duplicate-chip">
+                                {match.project_name} · {match.status}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="queue-actions">
@@ -538,6 +732,16 @@ export default function CreatorDashboardClient() {
                       >
                         Infos
                       </button>
+                      {row.website_url ? (
+                        <a
+                          href={row.website_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="button button-secondary"
+                        >
+                          Website öffnen
+                        </a>
+                      ) : null}
                       <button
                         type="button"
                         className="button"
@@ -575,6 +779,22 @@ export default function CreatorDashboardClient() {
       >
         {selectedQueueItem ? (
           <div className="queue-info-grid">
+            {selectedQueueItem.duplicateSummary ? (
+              <div className="queue-duplicate-box">
+                <strong>{selectedQueueItem.duplicateSummary}</strong>
+                <div className="queue-duplicate-list">
+                  {selectedQueueItem.duplicateMatches.map((match) => (
+                    <span
+                      key={`${selectedQueueItem.id}-${match.id}`}
+                      className="queue-duplicate-chip"
+                    >
+                      {match.project_name} · {match.status}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <p className="queue-info-line">
               <strong>Name:</strong> {selectedQueueItem.creator_name}
             </p>

@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { browserSupabase } from "../lib/supabase-browser";
 import {
   buildMetricDetail,
   creatorMetricKeys,
+  dashboardRangeOptions,
+  fetchCreatorDashboardData,
   metricDefinitions
 } from "../lib/creator-dashboard";
 
@@ -15,8 +17,11 @@ function isConfigured() {
 }
 
 export default function CreatorMetricDetailClient() {
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const metricKey = searchParams.get("metric") || "aufrufe";
+  const rangeKey = searchParams.get("range") || "all";
   const [session, setSession] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -29,6 +34,14 @@ export default function CreatorMetricDetailClient() {
 
     return metricKey;
   }, [metricKey]);
+
+  const resolvedRangeKey = useMemo(() => {
+    if (!dashboardRangeOptions.some((range) => range.key === rangeKey)) {
+      return "all";
+    }
+
+    return rangeKey;
+  }, [rangeKey]);
 
   useEffect(() => {
     if (!browserSupabase) {
@@ -81,8 +94,11 @@ export default function CreatorMetricDetailClient() {
     async function loadDetail() {
       setIsLoading(true);
 
-      const { fetchCreatorDashboardData } = await import("../lib/creator-dashboard");
-      const dashboardData = await fetchCreatorDashboardData(session.user.email, false);
+      const dashboardData = await fetchCreatorDashboardData(
+        session.user.email,
+        false,
+        resolvedRangeKey
+      );
 
       if (!active || !dashboardData) {
         setIsLoading(false);
@@ -101,7 +117,20 @@ export default function CreatorMetricDetailClient() {
     return () => {
       active = false;
     };
-  }, [isAdmin, resolvedMetricKey, session]);
+  }, [isAdmin, resolvedMetricKey, resolvedRangeKey, session]);
+
+  function updateRange(nextRangeKey) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("metric", resolvedMetricKey);
+
+    if (nextRangeKey === "all") {
+      params.delete("range");
+    } else {
+      params.set("range", nextRangeKey);
+    }
+
+    router.replace(`${pathname}?${params.toString()}`);
+  }
 
   if (!isConfigured()) {
     return (
@@ -140,7 +169,7 @@ export default function CreatorMetricDetailClient() {
               {detail?.description || metricDefinitions[resolvedMetricKey].description}
             </p>
           </div>
-          <Link href="/creator/dashboard" className="button button-secondary">
+          <Link href={`/creator/dashboard?range=${resolvedRangeKey}`} className="button button-secondary">
             Zurück zum Dashboard
           </Link>
         </div>
@@ -151,8 +180,23 @@ export default function CreatorMetricDetailClient() {
           <div>
             <h2 style={{ marginBottom: "0.35rem" }}>{detail?.total || 0} Einträge</h2>
             <p style={{ marginTop: 0 }}>
-              Hier siehst du die genaue Aufschlüsselung zu dieser Kennzahl.
+              Zeitraum: <strong>{detail?.rangeLabel || "Gesamt"}</strong>
             </p>
+          </div>
+
+          <div className="dashboard-range-picker" role="tablist" aria-label="Zeitraum wählen">
+            {dashboardRangeOptions.map((range) => (
+              <button
+                key={range.key}
+                type="button"
+                className={`dashboard-range-chip ${
+                  resolvedRangeKey === range.key ? "dashboard-range-chip-active" : ""
+                }`.trim()}
+                onClick={() => updateRange(range.key)}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -167,6 +211,18 @@ export default function CreatorMetricDetailClient() {
               >
                 <strong>{item.title}</strong>
                 <p>{item.summary}</p>
+                {item.breakdown?.length ? (
+                  <div className="metric-detail-breakdown">
+                    {item.breakdown.map((entry) => (
+                      <span
+                        key={`${item.title}-${entry.label}`}
+                        className="metric-detail-breakdown-chip"
+                      >
+                        {entry.label}: {entry.value}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 <small>{item.meta}</small>
               </article>
             ))}
