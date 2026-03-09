@@ -118,6 +118,8 @@ export default function CreatorDashboardClient() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
   const [selectedQueueItem, setSelectedQueueItem] = useState(null);
+  const [approvalDialog, setApprovalDialog] = useState(null);
+  const [approvalIntroText, setApprovalIntroText] = useState("");
   const [projectManagementMode, setProjectManagementMode] = useState("delete");
   const [projectManagementSearch, setProjectManagementSearch] = useState("");
   const [selectedManagedProjectId, setSelectedManagedProjectId] = useState(null);
@@ -482,7 +484,7 @@ export default function CreatorDashboardClient() {
     setStatus({ type: "success", message: "Du wurdest abgemeldet." });
   }
 
-  async function moderateSubmission(row, nextStatus) {
+  async function moderateSubmission(row, nextStatus, options = {}) {
     if (!browserSupabase) {
       return;
     }
@@ -491,13 +493,15 @@ export default function CreatorDashboardClient() {
     setStatus(null);
 
     const { buildSubmissionSlug } = await import("../lib/project-utils");
+    const normalizedIntroText = (options.approvedIntroText || "").trim();
 
     const now = new Date().toISOString();
     const payload = {
       status: nextStatus,
       reviewed_at: now,
       approved_at: nextStatus === "approved" ? now : null,
-      public_slug: nextStatus === "approved" ? buildSubmissionSlug(row) : null
+      public_slug: nextStatus === "approved" ? buildSubmissionSlug(row) : null,
+      approved_intro_text: nextStatus === "approved" ? normalizedIntroText || null : null
     };
 
     const { error } = await browserSupabase
@@ -533,6 +537,8 @@ export default function CreatorDashboardClient() {
           ? `Das Projekt wurde freigegeben und erscheint live auf der Startseite.${notificationHint}`
           : `Das Projekt wurde abgelehnt.${notificationHint}`
     });
+    setApprovalDialog(null);
+    setApprovalIntroText("");
     setSelectedQueueItem(null);
     setActiveRowId(null);
   }
@@ -555,6 +561,30 @@ export default function CreatorDashboardClient() {
     setProjectActionDialog({
       mode,
       project: selectedManagedProject
+    });
+  }
+
+  function openApprovalDialog(row) {
+    setApprovalDialog(row);
+    setApprovalIntroText("");
+  }
+
+  function closeApprovalDialog() {
+    if (activeRowId === approvalDialog?.id) {
+      return;
+    }
+
+    setApprovalDialog(null);
+    setApprovalIntroText("");
+  }
+
+  async function confirmApproval() {
+    if (!approvalDialog) {
+      return;
+    }
+
+    await moderateSubmission(approvalDialog, "approved", {
+      approvedIntroText: approvalIntroText
     });
   }
 
@@ -955,7 +985,7 @@ export default function CreatorDashboardClient() {
                           type="button"
                           className="button"
                           disabled={activeRowId === row.id}
-                          onClick={() => moderateSubmission(row, "approved")}
+                          onClick={() => openApprovalDialog(row)}
                         >
                           Freigeben
                         </button>
@@ -1184,6 +1214,41 @@ export default function CreatorDashboardClient() {
             <p className="queue-info-line queue-info-description">
               <strong>Beschreibung:</strong> {selectedQueueItem.description || "-"}
             </p>
+          </div>
+        ) : null}
+      </TextPromptOverlay>
+
+      <TextPromptOverlay
+        open={Boolean(approvalDialog)}
+        onClose={closeApprovalDialog}
+        onConfirm={confirmApproval}
+        secondaryLabel="Abbrechen"
+        onSecondaryAction={closeApprovalDialog}
+        confirmLabel="Freigeben"
+        transparentBackdrop
+        title="Freigabe mit eigenem Text"
+      >
+        {approvalDialog ? (
+          <div className="queue-info-grid">
+            <p className="queue-info-line">
+              <strong>Projekt:</strong> {approvalDialog.project_name}
+            </p>
+            <p className="queue-info-line queue-info-description">
+              <strong>Beschreibung-Fallback:</strong> {approvalDialog.description || "-"}
+            </p>
+            <p className="queue-info-line">
+              Dieser Text erscheint später in der Blende. Lässt du das Feld leer, wird automatisch
+              die Beschreibung der Einreichung verwendet.
+            </p>
+            <label className="field" style={{ marginTop: 0 }}>
+              <span className="field-label">Blenden-Text</span>
+              <textarea
+                className="textarea"
+                value={approvalIntroText}
+                onChange={(event) => setApprovalIntroText(event.target.value)}
+                placeholder="Text für die Blende eingeben"
+              />
+            </label>
           </div>
         ) : null}
       </TextPromptOverlay>
