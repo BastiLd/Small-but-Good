@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { browserSupabase } from "../lib/supabase-browser";
 import { trackInteraction } from "../lib/interaction-tracking";
+import { sendModerationNotification } from "../lib/moderation-notifications";
 import {
   buildMetricCards,
   creatorMetricKeys,
@@ -383,12 +384,26 @@ export default function CreatorDashboardClient() {
     if (error) {
       setStatus({ type: "error", message: error.message });
     } else {
+      const notificationResult = await sendModerationNotification({
+        nextStatus,
+        submission: {
+          ...row,
+          public_slug: payload.public_slug
+        }
+      });
+      const notificationHint =
+        notificationResult?.sent
+          ? ""
+          : ` Die Statusänderung wurde gespeichert, aber es wurde keine E-Mail gesendet${
+              notificationResult?.reason ? ` (${notificationResult.reason}).` : "."
+            }`;
+
       setStatus({
         type: "success",
         message:
           nextStatus === "approved"
-            ? "Das Projekt wurde freigegeben und erscheint live auf der Startseite."
-            : "Das Projekt wurde abgelehnt."
+            ? `Das Projekt wurde freigegeben und erscheint live auf der Startseite.${notificationHint}`
+            : `Das Projekt wurde abgelehnt.${notificationHint}`
       });
       setSelectedQueueItem(null);
     }

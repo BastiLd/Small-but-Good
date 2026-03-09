@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { browserSupabase } from "../lib/supabase-browser";
+import { withBasePath } from "../lib/basePath";
 import { ensureCreatorProfile } from "../lib/creator-profile";
+import { findPublicSubmissionDuplicates } from "../lib/public-submission-duplicates";
+import { browserSupabase } from "../lib/supabase-browser";
 import TextPromptOverlay from "./TextPromptOverlay";
 
 const DRAFT_STORAGE_KEY = "submit-project-form-draft";
@@ -57,6 +59,14 @@ export default function SubmitProjectForm() {
   const [showGuestPrompt, setShowGuestPrompt] = useState(false);
   const [guestPromptSeen, setGuestPromptSeen] = useState(false);
   const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState([]);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+
+  const previewImage = useMemo(
+    () => form.imageUrl.trim() || withBasePath("/images/project-placeholder.svg"),
+    [form.imageUrl]
+  );
+  const previewWebsite = useMemo(() => form.website.trim(), [form.website]);
 
   useEffect(() => {
     setForm(getDraftFromStorage());
@@ -109,6 +119,42 @@ export default function SubmitProjectForm() {
     }));
   }, [session]);
 
+  useEffect(() => {
+    if (!hasLoadedDraft || typeof window === "undefined") {
+      return;
+    }
+
+    const hasCandidate = form.projectName.trim() || form.website.trim();
+
+    if (!hasCandidate) {
+      setDuplicateMatches([]);
+      setIsCheckingDuplicates(false);
+      return;
+    }
+
+    let active = true;
+    setIsCheckingDuplicates(true);
+
+    const timeoutId = window.setTimeout(async () => {
+      const matches = await findPublicSubmissionDuplicates({
+        project_name: form.projectName.trim(),
+        website_url: form.website.trim()
+      });
+
+      if (!active) {
+        return;
+      }
+
+      setDuplicateMatches(matches.slice(0, 4));
+      setIsCheckingDuplicates(false);
+    }, 260);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [form.projectName, form.website, hasLoadedDraft]);
+
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
@@ -137,6 +183,7 @@ export default function SubmitProjectForm() {
     }
 
     setForm(initialForm);
+    setDuplicateMatches([]);
   }
 
   function maybeShowGuestPrompt() {
@@ -297,111 +344,175 @@ export default function SubmitProjectForm() {
   return (
     <>
       <form onSubmit={(event) => event.preventDefault()}>
-        {isLoggedIn ? (
-          <p className="submit-account-note">
-            Du bist angemeldet als <strong>{session.user.email}</strong>. Mit dem Button{" "}
-            <strong>Mit Account</strong> wird die Einreichung direkt mit deinem Konto verknüpft.
-          </p>
-        ) : (
-          <p className="submit-account-note">
-            Du kannst weiter ohne Account einreichen oder dich zuerst anmelden und dann mit deinem
-            Konto einreichen.
-          </p>
-        )}
+        <div className="submit-layout">
+          <div className="submit-form-column">
+            {isLoggedIn ? (
+              <p className="submit-account-note">
+                Du bist angemeldet als <strong>{session.user.email}</strong>. Mit dem Button{" "}
+                <strong>Mit Account</strong> wird die Einreichung direkt mit deinem Konto verknüpft.
+              </p>
+            ) : (
+              <p className="submit-account-note">
+                Du kannst weiter ohne Account einreichen oder dich zuerst anmelden und dann mit
+                deinem Konto einreichen.
+              </p>
+            )}
 
-        <label className="field">
-          <span className="field-label">Dein Name</span>
-          <input
-            className="input"
-            name="creatorName"
-            value={form.creatorName}
-            onChange={updateField}
-            placeholder="Zum Beispiel Bastian"
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Dein Name</span>
+              <input
+                className="input"
+                name="creatorName"
+                value={form.creatorName}
+                onChange={updateField}
+                placeholder="Zum Beispiel Bastian"
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">E-Mail</span>
-          <input
-            className="input"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={updateField}
-            placeholder="name@beispiel.de"
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">E-Mail</span>
+              <input
+                className="input"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={updateField}
+                placeholder="name@beispiel.de"
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Projektname</span>
-          <input
-            className="input"
-            name="projectName"
-            value={form.projectName}
-            onChange={updateField}
-            placeholder="Mein Projekt"
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Projektname</span>
+              <input
+                className="input"
+                name="projectName"
+                value={form.projectName}
+                onChange={updateField}
+                placeholder="Mein Projekt"
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Website oder Kanal</span>
-          <input
-            className="input"
-            name="website"
-            value={form.website}
-            onChange={updateField}
-            placeholder="https://..."
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Website oder Kanal</span>
+              <input
+                className="input"
+                name="website"
+                value={form.website}
+                onChange={updateField}
+                placeholder="https://..."
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Vorschaubild-URL (optional)</span>
-          <input
-            className="input"
-            name="imageUrl"
-            value={form.imageUrl}
-            onChange={updateField}
-            placeholder="https://.../bild.png"
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Vorschaubild-URL (optional)</span>
+              <input
+                className="input"
+                name="imageUrl"
+                value={form.imageUrl}
+                onChange={updateField}
+                placeholder="https://.../bild.png"
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Beschreibung</span>
-          <textarea
-            className="textarea"
-            name="description"
-            value={form.description}
-            onChange={updateField}
-            placeholder="Beschreibe kurz, was dein Projekt besonders macht."
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Beschreibung</span>
+              <textarea
+                className="textarea"
+                name="description"
+                value={form.description}
+                onChange={updateField}
+                placeholder="Beschreibe kurz, was dein Projekt besonders macht."
+              />
+            </label>
 
-        <div className="button-row">
-          <button type="button" className="button button-secondary" onClick={handleEmailClick}>
-            E-Mail öffnen
-          </button>
-          <button type="button" className="button" onClick={handleSupabaseClick} disabled={isSaving}>
-            {isSaving ? "Wird gespeichert..." : "Mit Supabase senden"}
-          </button>
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={handleAccountClick}
-            disabled={isSaving}
-          >
-            {isSaving ? "Wird gespeichert..." : "Mit Account"}
-          </button>
+            {isCheckingDuplicates ? (
+              <p className="submit-duplicate-note">Prüfe gerade auf exakte Dubletten...</p>
+            ) : null}
+
+            {duplicateMatches.length ? (
+              <div className="submit-duplicate-warning">
+                <strong>Mögliche Dublette erkannt</strong>
+                <p>
+                  Projektname oder Website stimmen exakt mit einer vorhandenen Einreichung überein.
+                  Du kannst trotzdem weitermachen, solltest die Daten aber kurz prüfen.
+                </p>
+                <div className="submit-duplicate-list">
+                  {duplicateMatches.map((match) => (
+                    <span key={match.id} className="submit-duplicate-chip">
+                      {match.project_name} · {match.status}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="button-row">
+              <button type="button" className="button button-secondary" onClick={handleEmailClick}>
+                E-Mail öffnen
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={handleSupabaseClick}
+                disabled={isSaving}
+              >
+                {isSaving ? "Wird gespeichert..." : "Mit Supabase senden"}
+              </button>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={handleAccountClick}
+                disabled={isSaving}
+              >
+                {isSaving ? "Wird gespeichert..." : "Mit Account"}
+              </button>
+            </div>
+
+            {status ? (
+              <p
+                className={`form-status ${
+                  status.type === "success" ? "form-status-success" : "form-status-error"
+                }`}
+              >
+                {status.message}
+              </p>
+            ) : null}
+          </div>
+
+          <aside className="submit-preview-card">
+            <p className="dashboard-eyebrow">Live-Vorschau</p>
+            <h2 style={{ marginTop: 0 }}>So wirkt deine Einreichung</h2>
+            <div className="submit-preview-media-wrap">
+              <img
+                src={previewImage}
+                alt={form.projectName.trim() || "Projektvorschau"}
+                className="submit-preview-image"
+              />
+            </div>
+            <div className="submit-preview-content">
+              <strong className="submit-preview-title">
+                {form.projectName.trim() || "Projektname erscheint hier"}
+              </strong>
+              <p className="submit-preview-description">
+                {form.description.trim() || "Deine Beschreibung erscheint hier in der Vorschau."}
+              </p>
+              <div className="detail-chip-row">
+                <span className="detail-chip">{form.creatorName.trim() || "Dein Name"}</span>
+                <span className="detail-chip">{previewWebsite || "Website oder Kanal"}</span>
+              </div>
+              {previewWebsite ? (
+                <a
+                  href={previewWebsite}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="button button-secondary submit-preview-link"
+                >
+                  Website testen
+                </a>
+              ) : null}
+            </div>
+          </aside>
         </div>
-
-        {status ? (
-          <p
-            className={`form-status ${
-              status.type === "success" ? "form-status-success" : "form-status-error"
-            }`}
-          >
-            {status.message}
-          </p>
-        ) : null}
       </form>
 
       <TextPromptOverlay

@@ -151,8 +151,19 @@ select
 from creators
 where slug is not null;
 
+create or replace view public_submission_duplicates as
+select
+  id,
+  project_name,
+  website_url,
+  status,
+  created_at
+from submission_requests
+where status in ('pending', 'approved');
+
 grant select on public_projects to anon, authenticated;
 grant select on public_creator_profiles to anon, authenticated;
+grant select on public_submission_duplicates to anon, authenticated;
 
 alter table creators enable row level security;
 alter table submission_requests enable row level security;

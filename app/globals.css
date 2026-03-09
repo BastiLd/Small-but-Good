@@ -229,6 +229,104 @@ a {
   line-height: 1.5;
 }
 
+.submit-page-card {
+  overflow: hidden;
+}
+
+.submit-page-intro {
+  max-width: 760px;
+  line-height: 1.55;
+}
+
+.submit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.submit-form-column {
+  min-width: 0;
+}
+
+.submit-preview-card {
+  position: sticky;
+  top: 5.75rem;
+  border: 1px solid rgba(154, 133, 93, 0.55);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent),
+    rgba(255, 255, 255, 0.32);
+  padding: 1rem;
+}
+
+.submit-preview-media-wrap {
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(154, 133, 93, 0.38);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.submit-preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.submit-preview-content {
+  margin-top: 0.95rem;
+}
+
+.submit-preview-title {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.submit-preview-description {
+  margin: 0.55rem 0 0.85rem;
+  line-height: 1.55;
+}
+
+.submit-preview-link {
+  margin-top: 0.95rem;
+}
+
+.submit-duplicate-note {
+  margin: 0.9rem 0 0;
+  color: #5a4930;
+}
+
+.submit-duplicate-warning {
+  margin-top: 0.9rem;
+  border: 1px solid rgba(177, 130, 121, 0.52);
+  border-radius: 12px;
+  background: rgba(212, 160, 145, 0.18);
+  padding: 0.9rem;
+}
+
+.submit-duplicate-warning p {
+  margin: 0.4rem 0 0;
+  line-height: 1.5;
+}
+
+.submit-duplicate-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.submit-duplicate-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 133, 93, 0.42);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.82rem;
+}
+
 .auth-intro {
   margin-bottom: 0.9rem;
 }
@@ -694,6 +792,14 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .submit-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .submit-preview-card {
+    position: static;
+  }
+
   .creator-dashboard-highlight-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -733,6 +839,10 @@ a {
 
   .metric-grid-creator {
     grid-template-columns: 1fr;
+  }
+
+  .submit-preview-card {
+    padding: 0.9rem;
   }
 
   .auth-options {
