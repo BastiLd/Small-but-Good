@@ -6,7 +6,7 @@ export default function HomePage() {
   return (
     <>
       <section className="hero">
-        <h1 style={{ marginTop: 0 }}>CuratedHub</h1>
+        <h1 style={{ marginTop: 0, textAlign: "center" }}>CuratedHub</h1>
         <p>
           Entdecke Projekte von kleinen Creators und kleine Creator an einem Ort. Klick auf ein
           Bild oder auf &quot;Mehr Infos&quot;, dann bekommst du eine Erklärung.
