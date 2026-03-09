@@ -224,6 +224,11 @@ a {
   max-width: 460px;
 }
 
+.submit-account-note {
+  margin: 0 0 0.8rem;
+  line-height: 1.5;
+}
+
 .auth-intro {
   margin-bottom: 0.9rem;
 }

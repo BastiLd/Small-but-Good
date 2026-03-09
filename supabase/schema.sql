@@ -48,6 +48,9 @@ alter table submission_requests add column if not exists reviewed_at timestamptz
 alter table submission_requests add column if not exists approved_at timestamptz;
 alter table submission_requests add column if not exists public_slug text;
 alter table submission_requests add column if not exists card_image_url text;
+alter table submission_requests add column if not exists submitted_with_account boolean not null default false;
+alter table submission_requests add column if not exists account_email text;
+alter table submission_requests add column if not exists account_user_id uuid;
 alter table interaction_events add column if not exists actor_email text;
 alter table interaction_events add column if not exists actor_user_id uuid;
 
@@ -74,6 +77,8 @@ create index if not exists idx_submission_requests_created_at on submission_requ
 create unique index if not exists idx_submission_requests_public_slug
   on submission_requests(public_slug)
   where public_slug is not null;
+create index if not exists idx_submission_requests_account_email
+  on submission_requests(account_email);
 create index if not exists idx_interaction_events_created_at
   on interaction_events(created_at desc);
 create index if not exists idx_interaction_events_type_created_at
