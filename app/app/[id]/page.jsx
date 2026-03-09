@@ -108,7 +108,7 @@ export default function AppDetailPage({ params }) {
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zur&uuml;ck zur &Uuml;bersicht
+          Zurück zur Übersicht
         </Link>
       </div>
     </article>

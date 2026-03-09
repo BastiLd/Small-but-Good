@@ -11,6 +11,7 @@ import {
   primaryMetricKeys,
   secondaryMetricKeys
 } from "../lib/creator-dashboard";
+import TextPromptOverlay from "./TextPromptOverlay";
 
 function isConfigured() {
   return Boolean(browserSupabase);
@@ -49,6 +50,7 @@ export default function CreatorDashboardClient() {
   const [isSendingLink, setIsSendingLink] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
+  const [selectedQueueItem, setSelectedQueueItem] = useState(null);
   const [status, setStatus] = useState(null);
   const [stats, setStats] = useState({
     submissions: 0,
@@ -330,6 +332,7 @@ export default function CreatorDashboardClient() {
             ? "Das Projekt wurde freigegeben und erscheint live auf der Startseite."
             : "Das Projekt wurde abgelehnt."
       });
+      setSelectedQueueItem(null);
     }
 
     setActiveRowId(null);
@@ -426,54 +429,39 @@ export default function CreatorDashboardClient() {
   }
 
   return (
-    <section className="dashboard-stack">
-      <article className="card">
-        <div className="admin-bar">
-          <div>
-            <h1 style={{ marginBottom: "0.35rem" }}>Creator-Dashboard</h1>
-            <p style={{ marginTop: 0 }}>Angemeldet als {sessionEmail}</p>
-          </div>
-          <div className="button-row dashboard-header-actions">
-            <Link href="/creator/dashboard/security" className="button button-secondary">
-              Passwort setzen
-            </Link>
-            <button type="button" className="button button-secondary" onClick={signOut}>
-              Abmelden
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <article className="card">
-        <h2 style={{ marginTop: 0, marginBottom: "0.45rem" }}>
-          {isAdmin ? "Dashboard-Übersicht" : "Deine Projektstatistiken"}
-        </h2>
-        <p style={{ marginTop: 0 }}>
-          {isAdmin
-            ? "Hier siehst du alle Kennzahlen inklusive Freigaben und Moderation."
-            : "Hier siehst du nur die Kennzahlen, die direkt deine Projekte betreffen."}
-        </p>
-      </article>
-
-      <section className="dashboard-metrics">
-        <div className="metric-grid">
-          {topMetricCards.map((metric) => (
-            <article key={metric.key} className="card stat-card compact-stat-card">
-              <span className="stat-label">{metric.label}</span>
-              <strong className="stat-value">{metric.value}</strong>
-              <Link
-                href={`/creator/dashboard/details?metric=${metric.key}`}
-                className="button button-secondary stat-button"
-              >
-                {metric.buttonLabel}
+    <>
+      <section className="dashboard-stack">
+        <article className="card">
+          <div className="admin-bar">
+            <div>
+              <h1 style={{ marginBottom: "0.35rem" }}>Creator-Dashboard</h1>
+              <p style={{ marginTop: 0 }}>Angemeldet als {sessionEmail}</p>
+            </div>
+            <div className="button-row dashboard-header-actions">
+              <Link href="/creator/dashboard/security" className="button button-secondary">
+                Passwort setzen
               </Link>
-            </article>
-          ))}
-        </div>
+              <button type="button" className="button button-secondary" onClick={signOut}>
+                Abmelden
+              </button>
+            </div>
+          </div>
+        </article>
 
-        {bottomMetricCards.length ? (
-          <div className="metric-grid metric-grid-secondary">
-            {bottomMetricCards.map((metric) => (
+        <article className="card">
+          <h2 style={{ marginTop: 0, marginBottom: "0.45rem" }}>
+            {isAdmin ? "Dashboard-Übersicht" : "Deine Projektstatistiken"}
+          </h2>
+          <p style={{ marginTop: 0 }}>
+            {isAdmin
+              ? "Hier siehst du alle Kennzahlen inklusive Freigaben und Moderation."
+              : "Hier siehst du nur die Kennzahlen, die direkt deine Projekte betreffen."}
+          </p>
+        </article>
+
+        <section className="dashboard-metrics">
+          <div className="metric-grid">
+            {topMetricCards.map((metric) => (
               <article key={metric.key} className="card stat-card compact-stat-card">
                 <span className="stat-label">{metric.label}</span>
                 <strong className="stat-value">{metric.value}</strong>
@@ -486,92 +474,128 @@ export default function CreatorDashboardClient() {
               </article>
             ))}
           </div>
-        ) : null}
-      </section>
 
-      {isAdmin ? (
-        <article className="card">
-          <div className="section-header">
-            <div>
-              <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
-            </div>
-            <span className="status-pill">{queue.length} offen</span>
-          </div>
-
-          {status ? (
-            <p
-              className={`form-status ${
-                status.type === "success" ? "form-status-success" : "form-status-error"
-              }`}
-            >
-              {status.message}
-            </p>
-          ) : null}
-
-          {isLoading ? (
-            <p>Lade Moderation...</p>
-          ) : queue.length ? (
-            <div className="queue-list">
-              {queue.map((row) => (
-                <article key={row.id} className="queue-item">
-                  <div className="queue-copy">
-                    <div className="section-header">
-                      <div>
-                        <h3 style={{ marginBottom: "0.35rem" }}>{row.project_name}</h3>
-                        <p className="queue-meta" style={{ marginTop: 0 }}>
-                          Von {row.creator_name} | {row.email}
-                        </p>
-                      </div>
-                      <span className="status-pill status-pill-pending">Ausstehend</span>
-                    </div>
-
-                    <p className="queue-description">{row.description}</p>
-
-                    {row.website_url ? (
-                      <p className="queue-meta">
-                        Link:{" "}
-                        <a href={row.website_url} target="_blank" rel="noreferrer">
-                          {row.website_url}
-                        </a>
-                      </p>
-                    ) : null}
-
-                    {row.card_image_url ? (
-                      <p className="queue-meta">
-                        Bild:{" "}
-                        <a href={row.card_image_url} target="_blank" rel="noreferrer">
-                          {row.card_image_url}
-                        </a>
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="queue-actions">
-                    <button
-                      type="button"
-                      className="button"
-                      disabled={activeRowId === row.id}
-                      onClick={() => moderateSubmission(row, "approved")}
-                    >
-                      Freigeben
-                    </button>
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      disabled={activeRowId === row.id}
-                      onClick={() => moderateSubmission(row, "rejected")}
-                    >
-                      Ablehnen
-                    </button>
-                  </div>
+          {bottomMetricCards.length ? (
+            <div className="metric-grid metric-grid-secondary">
+              {bottomMetricCards.map((metric) => (
+                <article key={metric.key} className="card stat-card compact-stat-card">
+                  <span className="stat-label">{metric.label}</span>
+                  <strong className="stat-value">{metric.value}</strong>
+                  <Link
+                    href={`/creator/dashboard/details?metric=${metric.key}`}
+                    className="button button-secondary stat-button"
+                  >
+                    {metric.buttonLabel}
+                  </Link>
                 </article>
               ))}
             </div>
-          ) : (
-            <p>Aktuell warten keine Projekte auf Freigabe.</p>
-          )}
-        </article>
-      ) : null}
-    </section>
+          ) : null}
+        </section>
+
+        {isAdmin ? (
+          <article className="card">
+            <div className="section-header">
+              <div>
+                <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
+              </div>
+              <span className="status-pill">{queue.length} offen</span>
+            </div>
+
+            {status ? (
+              <p
+                className={`form-status ${
+                  status.type === "success" ? "form-status-success" : "form-status-error"
+                }`}
+              >
+                {status.message}
+              </p>
+            ) : null}
+
+            {isLoading ? (
+              <p>Lade Moderation...</p>
+            ) : queue.length ? (
+              <div className="queue-list">
+                {queue.map((row) => (
+                  <article key={row.id} className="queue-item">
+                    <div className="queue-copy">
+                      <div className="section-header">
+                        <div>
+                          <h3 style={{ marginBottom: "0.35rem" }}>Projektname: {row.project_name}</h3>
+                          <p className="queue-meta queue-summary" style={{ marginTop: 0 }}>
+                            Website oder Kanal: {row.website_url || "-"}
+                          </p>
+                        </div>
+                        <span className="status-pill status-pill-pending">Ausstehend</span>
+                      </div>
+                    </div>
+
+                    <div className="queue-actions">
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={() => setSelectedQueueItem(row)}
+                      >
+                        Infos
+                      </button>
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={activeRowId === row.id}
+                        onClick={() => moderateSubmission(row, "approved")}
+                      >
+                        Freigeben
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        disabled={activeRowId === row.id}
+                        onClick={() => moderateSubmission(row, "rejected")}
+                      >
+                        Ablehnen
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p>Aktuell warten keine Projekte auf Freigabe.</p>
+            )}
+          </article>
+        ) : null}
+      </section>
+
+      <TextPromptOverlay
+        open={Boolean(selectedQueueItem)}
+        onClose={() => setSelectedQueueItem(null)}
+        confirmLabel="Schließen"
+        transparentBackdrop
+        warmSurface
+        title="Einreichungsdetails"
+      >
+        {selectedQueueItem ? (
+          <div className="queue-info-grid">
+            <p className="queue-info-line">
+              <strong>Name:</strong> {selectedQueueItem.creator_name}
+            </p>
+            <p className="queue-info-line">
+              <strong>E-Mail:</strong> {selectedQueueItem.email}
+            </p>
+            <p className="queue-info-line">
+              <strong>Projektname:</strong> {selectedQueueItem.project_name}
+            </p>
+            <p className="queue-info-line">
+              <strong>Website oder Kanal:</strong> {selectedQueueItem.website_url || "-"}
+            </p>
+            <p className="queue-info-line">
+              <strong>Vorschaubild-URL:</strong> {selectedQueueItem.card_image_url || "-"}
+            </p>
+            <p className="queue-info-line queue-info-description">
+              <strong>Beschreibung:</strong> {selectedQueueItem.description || "-"}
+            </p>
+          </div>
+        ) : null}
+      </TextPromptOverlay>
+    </>
   );
 }
