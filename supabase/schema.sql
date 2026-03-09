@@ -129,7 +129,8 @@ create index if not exists idx_interaction_events_type_created_at
 create index if not exists idx_interaction_events_actor_email
   on interaction_events(actor_email);
 
-create or replace view public_projects as
+drop view if exists public_projects;
+create view public_projects as
 select
   sr.id,
   sr.project_name,
@@ -149,7 +150,8 @@ left join creators c on c.id = sr.creator_id
 where sr.status = 'approved'
   and sr.deleted_at is null;
 
-create or replace view public_creator_profiles as
+drop view if exists public_creator_profiles;
+create view public_creator_profiles as
 select
   id,
   slug,
@@ -159,7 +161,8 @@ select
 from creators
 where slug is not null;
 
-create or replace view public_submission_duplicates as
+drop view if exists public_submission_duplicates;
+create view public_submission_duplicates as
 select
   id,
   project_name,
