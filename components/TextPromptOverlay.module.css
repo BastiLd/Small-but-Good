@@ -29,6 +29,11 @@
   background: rgba(245, 215, 149, 0.98);
 }
 
+.dialogDanger {
+  background: rgba(255, 238, 238, 0.98);
+  border-color: rgba(176, 67, 67, 0.28);
+}
+
 .dialog:focus {
   outline: none;
 }
@@ -76,6 +81,35 @@
   box-shadow: 0 8px 20px rgba(177, 130, 121, 0.35);
 }
 
+.confirmButtonDanger {
+  background: #b04343;
+}
+
+.confirmButtonDanger:hover,
+.confirmButtonDanger:focus-visible {
+  background: #942d2d;
+  box-shadow: 0 8px 20px rgba(176, 67, 67, 0.35);
+}
+
+.secondaryButton {
+  border: 1px solid rgba(128, 105, 97, 0.45);
+  border-radius: 12px;
+  padding: 0.8rem 1.2rem;
+  min-width: 180px;
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: #5b4538;
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus-visible {
+  background: rgba(255, 255, 255, 0.92);
+  transform: translateY(-1px);
+}
+
 .confirmButton:focus-visible {
   outline: 3px solid rgba(174, 211, 206, 0.85);
   outline-offset: 2px;
@@ -89,6 +123,10 @@
   }
 
   .confirmButton {
+    width: 100%;
+  }
+
+  .secondaryButton {
     width: 100%;
   }
 }

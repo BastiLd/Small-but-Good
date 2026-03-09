@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { withBasePath } from "../lib/basePath";
 import { browserSupabase } from "../lib/supabase-browser";
 import { trackInteraction } from "../lib/interaction-tracking";
 import { sendModerationNotification } from "../lib/moderation-notifications";
@@ -14,6 +15,8 @@ import {
   secondaryMetricKeys
 } from "../lib/creator-dashboard";
 import TextPromptOverlay from "./TextPromptOverlay";
+
+const PROJECT_PLACEHOLDER_IMAGE = withBasePath("/images/project-placeholder.svg");
 
 function isConfigured() {
   return Boolean(browserSupabase);
@@ -53,8 +56,56 @@ function formatShortDate(value) {
   }).format(new Date(value));
 }
 
+function formatLongDate(value) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("de-AT", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(new Date(value));
+}
+
 function buildDetailsHref(metricKey, rangeKey) {
   return `/creator/dashboard/details?metric=${metricKey}&range=${rangeKey}`;
+}
+
+function getPreviewImage(project) {
+  return project?.card_image_url?.trim() || PROJECT_PLACEHOLDER_IMAGE;
+}
+
+function getProjectManagementCopy(mode) {
+  if (mode === "restore") {
+    return {
+      eyebrow: "Wiederherstellen",
+      title: "Gelöschte Projekte wiederherstellen",
+      description:
+        "Suche nach gelöschten Projekten, prüfe rechts die Vorschau und stelle sie innerhalb von zwei Monaten wieder her.",
+      searchPlaceholder: "Nach gelöschtem Projekt, URL oder Slug suchen",
+      emptyTitle: "Keine wiederherstellbaren Projekte gefunden.",
+      emptyCopy:
+        "Sobald du ein freigegebenes Projekt löschst, erscheint es hier für zwei Monate und kann wiederhergestellt werden.",
+      actionLabel: "Wiederherstellen",
+      confirmLabel: "Wirklich wiederherstellen",
+      confirmQuestion: "Wirklich wiederherstellen?",
+      previewStatus: "Zur Wiederherstellung bereit"
+    };
+  }
+
+  return {
+    eyebrow: "Löschen",
+    title: "Freigegebene Projekte verwalten",
+    description:
+      "Suche nach freigegebenen Projekten, wähle links ein Projekt aus und prüfe rechts die Vorschau, bevor du es ausblendest.",
+    searchPlaceholder: "Nach Projekt, URL oder Slug suchen",
+    emptyTitle: "Keine freigegebenen Projekte gefunden.",
+    emptyCopy: "Sobald Projekte freigegeben sind, kannst du sie hier gezielt suchen und löschen.",
+    actionLabel: "Löschen",
+    confirmLabel: "Wirklich löschen",
+    confirmQuestion: "Wirklich löschen?",
+    previewStatus: "Live"
+  };
 }
 
 export default function CreatorDashboardClient() {
@@ -67,6 +118,10 @@ export default function CreatorDashboardClient() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [activeRowId, setActiveRowId] = useState(null);
   const [selectedQueueItem, setSelectedQueueItem] = useState(null);
+  const [projectManagementMode, setProjectManagementMode] = useState("delete");
+  const [projectManagementSearch, setProjectManagementSearch] = useState("");
+  const [selectedManagedProjectId, setSelectedManagedProjectId] = useState(null);
+  const [projectActionDialog, setProjectActionDialog] = useState(null);
   const [status, setStatus] = useState(null);
   const [activeRangeKey, setActiveRangeKey] = useState("all");
   const [dashboardData, setDashboardData] = useState(null);
@@ -110,6 +165,41 @@ export default function CreatorDashboardClient() {
   const pendingSubmissions = dashboardData?.pendingSubmissions || [];
   const releasedProjectCount =
     (dashboardData?.ownApprovedSubmissions?.length || 0) + (dashboardData?.ownedLocalApps?.length || 0);
+  const adminProjectManagement = dashboardData?.adminProjectManagement || {
+    activeProjects: [],
+    restorableProjects: []
+  };
+  const managementCopy = useMemo(
+    () => getProjectManagementCopy(projectManagementMode),
+    [projectManagementMode]
+  );
+  const manageableProjects = useMemo(
+    () =>
+      projectManagementMode === "restore"
+        ? adminProjectManagement.restorableProjects
+        : adminProjectManagement.activeProjects,
+    [adminProjectManagement, projectManagementMode]
+  );
+  const filteredManageableProjects = useMemo(() => {
+    const searchTerm = projectManagementSearch.trim().toLowerCase();
+
+    if (!searchTerm) {
+      return manageableProjects;
+    }
+
+    return manageableProjects.filter((project) =>
+      [project.project_name, project.creator_name, project.website_url, project.public_slug]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(searchTerm))
+    );
+  }, [manageableProjects, projectManagementSearch]);
+  const selectedManagedProject = useMemo(
+    () =>
+      filteredManageableProjects.find((project) => project.id === selectedManagedProjectId) ||
+      filteredManageableProjects[0] ||
+      null,
+    [filteredManageableProjects, selectedManagedProjectId]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -200,7 +290,12 @@ export default function CreatorDashboardClient() {
       setIsLoading(true);
       const nextDashboardData = await fetchCreatorDashboardData(sessionEmail, isAdmin, activeRangeKey);
 
-      if (!active || !nextDashboardData) {
+      if (!active) {
+        return;
+      }
+
+      if (!nextDashboardData) {
+        setIsLoading(false);
         return;
       }
 
@@ -240,6 +335,35 @@ export default function CreatorDashboardClient() {
       browserSupabase.removeChannel(interactionsChannel);
     };
   }, [activeRangeKey, isAdmin, sessionEmail]);
+
+  useEffect(() => {
+    if (!filteredManageableProjects.length) {
+      if (selectedManagedProjectId !== null) {
+        setSelectedManagedProjectId(null);
+      }
+      return;
+    }
+
+    if (!filteredManageableProjects.some((project) => project.id === selectedManagedProjectId)) {
+      setSelectedManagedProjectId(filteredManageableProjects[0].id);
+    }
+  }, [filteredManageableProjects, selectedManagedProjectId]);
+
+  async function refreshDashboard() {
+    if (!browserSupabase || !sessionEmail) {
+      return;
+    }
+
+    const nextDashboardData = await fetchCreatorDashboardData(sessionEmail, isAdmin, activeRangeKey);
+
+    if (!nextDashboardData) {
+      return;
+    }
+
+    setDashboardData(nextDashboardData);
+    setStats(nextDashboardData.stats);
+    setQueue(nextDashboardData.queue);
+  }
 
   async function sendMagicLink(event) {
     event.preventDefault();
@@ -383,36 +507,105 @@ export default function CreatorDashboardClient() {
 
     if (error) {
       setStatus({ type: "error", message: error.message });
-    } else {
-      const notificationResult = await sendModerationNotification({
-        nextStatus,
-        submission: {
-          ...row,
-          public_slug: payload.public_slug
-        }
-      });
-      const notificationHint =
-        notificationResult?.sent
-          ? ""
-          : ` Die Statusänderung wurde gespeichert, aber es wurde keine E-Mail gesendet${
-              notificationResult?.reason ? ` (${notificationResult.reason}).` : "."
-            }`;
-
-      setStatus({
-        type: "success",
-        message:
-          nextStatus === "approved"
-            ? `Das Projekt wurde freigegeben und erscheint live auf der Startseite.${notificationHint}`
-            : `Das Projekt wurde abgelehnt.${notificationHint}`
-      });
-      setSelectedQueueItem(null);
+      setActiveRowId(null);
+      return;
     }
 
+    const notificationResult = await sendModerationNotification({
+      nextStatus,
+      submission: {
+        ...row,
+        public_slug: payload.public_slug
+      }
+    });
+    const notificationHint =
+      notificationResult?.sent
+        ? ""
+        : ` Die Statusänderung wurde gespeichert, aber es wurde keine E-Mail gesendet${
+            notificationResult?.reason ? ` (${notificationResult.reason}).` : "."
+          }`;
+
+    await refreshDashboard();
+    setStatus({
+      type: "success",
+      message:
+        nextStatus === "approved"
+          ? `Das Projekt wurde freigegeben und erscheint live auf der Startseite.${notificationHint}`
+          : `Das Projekt wurde abgelehnt.${notificationHint}`
+    });
+    setSelectedQueueItem(null);
     setActiveRowId(null);
   }
 
   function handleRangeChange(nextRangeKey) {
     setActiveRangeKey(nextRangeKey);
+  }
+
+  function handleManagementModeChange(nextMode) {
+    setProjectManagementMode(nextMode);
+    setProjectManagementSearch("");
+    setProjectActionDialog(null);
+  }
+
+  function openProjectActionDialog(mode) {
+    if (!selectedManagedProject) {
+      return;
+    }
+
+    setProjectActionDialog({
+      mode,
+      project: selectedManagedProject
+    });
+  }
+
+  async function confirmProjectAction() {
+    if (!browserSupabase || !projectActionDialog?.project?.id) {
+      return;
+    }
+
+    const { mode, project } = projectActionDialog;
+    setActiveRowId(project.id);
+    setStatus(null);
+
+    let payload;
+
+    if (mode === "restore") {
+      payload = {
+        deleted_at: null,
+        restore_until: null
+      };
+    } else {
+      const deletedAt = new Date();
+      const restoreUntil = new Date(deletedAt);
+      restoreUntil.setMonth(restoreUntil.getMonth() + 2);
+      payload = {
+        deleted_at: deletedAt.toISOString(),
+        restore_until: restoreUntil.toISOString()
+      };
+    }
+
+    const { error } = await browserSupabase
+      .from("submission_requests")
+      .update(payload)
+      .eq("id", project.id)
+      .eq("status", "approved");
+
+    if (error) {
+      setStatus({ type: "error", message: error.message });
+      setActiveRowId(null);
+      return;
+    }
+
+    await refreshDashboard();
+    setProjectActionDialog(null);
+    setStatus({
+      type: "success",
+      message:
+        mode === "restore"
+          ? "Das Projekt wurde wiederhergestellt und ist wieder sichtbar."
+          : "Das Projekt wurde ausgeblendet und kann zwei Monate lang wiederhergestellt werden."
+    });
+    setActiveRowId(null);
   }
 
   if (!isConfigured()) {
@@ -696,91 +889,254 @@ export default function CreatorDashboardClient() {
         )}
 
         {isAdmin ? (
-          <article className="card">
-            <div className="section-header">
-              <div>
-                <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
-                <p style={{ marginTop: 0 }}>
-                  Standardmäßig bleiben die Karten kompakt. Über Infos siehst du alle Details zur
-                  Einreichung.
-                </p>
+          <>
+            <article className="card">
+              <div className="section-header">
+                <div>
+                  <h2 style={{ marginBottom: "0.35rem" }}>Moderationswarteschlange</h2>
+                  <p style={{ marginTop: 0 }}>
+                    Standardmäßig bleiben die Karten kompakt. Über Infos siehst du alle Details zur
+                    Einreichung.
+                  </p>
+                </div>
+                <span className="status-pill">{queue.length} offen</span>
               </div>
-              <span className="status-pill">{queue.length} offen</span>
-            </div>
 
-            {isLoading ? (
-              <p>Lade Moderation...</p>
-            ) : queue.length ? (
-              <div className="queue-list">
-                {queue.map((row) => (
-                  <article key={row.id} className="queue-item">
-                    <div className="queue-copy">
-                      <div className="section-header">
-                        <div>
-                          <h3 style={{ marginBottom: "0.35rem" }}>Projektname: {row.project_name}</h3>
-                          <p className="queue-meta queue-summary" style={{ marginTop: 0 }}>
-                            Website oder Kanal: {row.website_url || "-"}
-                          </p>
+              {isLoading ? (
+                <p>Lade Moderation...</p>
+              ) : queue.length ? (
+                <div className="queue-list">
+                  {queue.map((row) => (
+                    <article key={row.id} className="queue-item">
+                      <div className="queue-copy">
+                        <div className="section-header">
+                          <div>
+                            <h3 style={{ marginBottom: "0.35rem" }}>Projektname: {row.project_name}</h3>
+                            <p className="queue-meta queue-summary" style={{ marginTop: 0 }}>
+                              Website oder Kanal: {row.website_url || "-"}
+                            </p>
+                          </div>
+                          <span className="status-pill status-pill-pending">Ausstehend</span>
                         </div>
-                        <span className="status-pill status-pill-pending">Ausstehend</span>
+
+                        {row.duplicateSummary ? (
+                          <div className="queue-duplicate-box">
+                            <strong>{row.duplicateSummary}</strong>
+                            <div className="queue-duplicate-list">
+                              {row.duplicateMatches.slice(0, 3).map((match) => (
+                                <span key={`${row.id}-${match.id}`} className="queue-duplicate-chip">
+                                  {match.project_name} · {match.status}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
 
-                      {row.duplicateSummary ? (
-                        <div className="queue-duplicate-box">
-                          <strong>{row.duplicateSummary}</strong>
-                          <div className="queue-duplicate-list">
-                            {row.duplicateMatches.slice(0, 3).map((match) => (
-                              <span key={`${row.id}-${match.id}`} className="queue-duplicate-chip">
-                                {match.project_name} · {match.status}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="queue-actions">
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        onClick={() => setSelectedQueueItem(row)}
-                      >
-                        Infos
-                      </button>
-                      {row.website_url ? (
-                        <a
-                          href={row.website_url}
-                          target="_blank"
-                          rel="noreferrer"
+                      <div className="queue-actions">
+                        <button
+                          type="button"
                           className="button button-secondary"
+                          onClick={() => setSelectedQueueItem(row)}
                         >
-                          Website öffnen
-                        </a>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="button"
-                        disabled={activeRowId === row.id}
-                        onClick={() => moderateSubmission(row, "approved")}
-                      >
-                        Freigeben
-                      </button>
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        disabled={activeRowId === row.id}
-                        onClick={() => moderateSubmission(row, "rejected")}
-                      >
-                        Ablehnen
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                          Infos
+                        </button>
+                        {row.website_url ? (
+                          <a
+                            href={row.website_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="button button-secondary"
+                          >
+                            Website öffnen
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="button"
+                          disabled={activeRowId === row.id}
+                          onClick={() => moderateSubmission(row, "approved")}
+                        >
+                          Freigeben
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          disabled={activeRowId === row.id}
+                          onClick={() => moderateSubmission(row, "rejected")}
+                        >
+                          Ablehnen
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p>Aktuell warten keine Projekte auf Freigabe.</p>
+              )}
+            </article>
+
+            <article className="card">
+              <div className="section-header">
+                <div>
+                  <p className="dashboard-eyebrow">{managementCopy.eyebrow}</p>
+                  <h2 style={{ marginTop: 0, marginBottom: "0.35rem" }}>{managementCopy.title}</h2>
+                  <p style={{ marginTop: 0 }}>{managementCopy.description}</p>
+                </div>
+                <div className="management-mode-switch" role="tablist" aria-label="Projektverwaltung">
+                  <button
+                    type="button"
+                    className={`dashboard-range-chip ${
+                      projectManagementMode === "delete" ? "dashboard-range-chip-active" : ""
+                    }`.trim()}
+                    onClick={() => handleManagementModeChange("delete")}
+                  >
+                    Löschen
+                  </button>
+                  <button
+                    type="button"
+                    className={`dashboard-range-chip ${
+                      projectManagementMode === "restore" ? "dashboard-range-chip-active" : ""
+                    }`.trim()}
+                    onClick={() => handleManagementModeChange("restore")}
+                  >
+                    Wiederherstellen
+                  </button>
+                </div>
               </div>
-            ) : (
-              <p>Aktuell warten keine Projekte auf Freigabe.</p>
-            )}
-          </article>
+
+              <div className="management-layout">
+                <div className="management-list-pane">
+                  <label className="field" style={{ marginTop: 0 }}>
+                    <span className="field-label">Suche</span>
+                    <input
+                      className="input management-search-field"
+                      type="search"
+                      value={projectManagementSearch}
+                      onChange={(event) => setProjectManagementSearch(event.target.value)}
+                      placeholder={managementCopy.searchPlaceholder}
+                    />
+                  </label>
+
+                  {filteredManageableProjects.length ? (
+                    <div className="management-project-list">
+                      {filteredManageableProjects.map((project) => (
+                        <button
+                          key={project.id}
+                          type="button"
+                          className={`management-project-button ${
+                            selectedManagedProject?.id === project.id
+                              ? "management-project-button-active"
+                              : ""
+                          }`.trim()}
+                          onClick={() => setSelectedManagedProjectId(project.id)}
+                        >
+                          <strong>{project.project_name}</strong>
+                          <span>{project.creator_name || "Ohne Namen"}</span>
+                          <small>{project.website_url || project.public_slug || "Ohne Link"}</small>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="management-empty-state">
+                      <strong>{managementCopy.emptyTitle}</strong>
+                      <p>{managementCopy.emptyCopy}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="management-preview-card">
+                  {selectedManagedProject ? (
+                    <>
+                      <div className="management-preview-media">
+                        <img
+                          src={getPreviewImage(selectedManagedProject)}
+                          alt={`Vorschau von ${selectedManagedProject.project_name}`}
+                          className="management-preview-image"
+                        />
+                      </div>
+
+                      <div className="management-preview-copy">
+                        <div className="creator-project-meta-row">
+                          <span className="status-pill">
+                            {projectManagementMode === "restore"
+                              ? managementCopy.previewStatus
+                              : selectedManagedProject.deleted_at
+                                ? "Gelöscht"
+                                : managementCopy.previewStatus}
+                          </span>
+                          {selectedManagedProject.public_slug ? (
+                            <span className="status-pill">{selectedManagedProject.public_slug}</span>
+                          ) : null}
+                        </div>
+
+                        <h3>{selectedManagedProject.project_name}</h3>
+                        <p className="queue-info-line">
+                          <strong>Creator:</strong> {selectedManagedProject.creator_name || "-"}
+                        </p>
+                        <p className="queue-info-line">
+                          <strong>Website oder Kanal:</strong>{" "}
+                          {selectedManagedProject.website_url || "-"}
+                        </p>
+                        <p className="queue-info-line">
+                          <strong>Freigegeben am:</strong>{" "}
+                          {formatLongDate(selectedManagedProject.approved_at)}
+                        </p>
+                        {selectedManagedProject.restore_until ? (
+                          <p className="queue-info-line">
+                            <strong>Wiederherstellbar bis:</strong>{" "}
+                            {formatLongDate(selectedManagedProject.restore_until)}
+                          </p>
+                        ) : null}
+                        <p className="queue-info-line queue-info-description">
+                          <strong>Text:</strong>{" "}
+                          {selectedManagedProject.approved_intro_text ||
+                            selectedManagedProject.description ||
+                            "-"}
+                        </p>
+                      </div>
+
+                      <div className="button-row">
+                        {selectedManagedProject.website_url ? (
+                          <a
+                            href={selectedManagedProject.website_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="button button-secondary"
+                          >
+                            Website öffnen
+                          </a>
+                        ) : null}
+                        {selectedManagedProject.public_slug ? (
+                          <Link
+                            href={`/projekte/${selectedManagedProject.public_slug}`}
+                            className="button button-secondary"
+                          >
+                            Projektseite öffnen
+                          </Link>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={`button ${
+                            projectManagementMode === "delete" ? "button-danger" : ""
+                          }`.trim()}
+                          disabled={activeRowId === selectedManagedProject.id}
+                          onClick={() => openProjectActionDialog(projectManagementMode)}
+                        >
+                          {managementCopy.actionLabel}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="management-empty-state">
+                      <strong>Keine Vorschau verfügbar.</strong>
+                      <p>Wähle links ein Projekt aus, damit du rechts sofort die Vorschau siehst.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </article>
+          </>
         ) : null}
       </section>
 
@@ -828,6 +1184,49 @@ export default function CreatorDashboardClient() {
             <p className="queue-info-line queue-info-description">
               <strong>Beschreibung:</strong> {selectedQueueItem.description || "-"}
             </p>
+          </div>
+        ) : null}
+      </TextPromptOverlay>
+
+      <TextPromptOverlay
+        open={Boolean(projectActionDialog)}
+        onClose={() => setProjectActionDialog(null)}
+        onConfirm={confirmProjectAction}
+        secondaryLabel="Abbrechen"
+        onSecondaryAction={() => setProjectActionDialog(null)}
+        confirmLabel={
+          projectActionDialog
+            ? getProjectManagementCopy(projectActionDialog.mode).confirmLabel
+            : "Bestätigen"
+        }
+        transparentBackdrop
+        dangerSurface
+        dangerConfirm={projectActionDialog?.mode === "delete"}
+        title={
+          projectActionDialog
+            ? getProjectManagementCopy(projectActionDialog.mode).confirmQuestion
+            : ""
+        }
+      >
+        {projectActionDialog?.project ? (
+          <div className="queue-info-grid">
+            <p className="management-warning-copy">
+              <strong>Projekt:</strong> {projectActionDialog.project.project_name}
+            </p>
+            <p className="management-warning-copy">
+              <strong>Creator:</strong> {projectActionDialog.project.creator_name || "-"}
+            </p>
+            {projectActionDialog.mode === "delete" ? (
+              <p className="management-warning-copy">
+                Das Projekt verschwindet sofort aus der öffentlichen Ansicht und kann danach noch
+                zwei Monate lang wiederhergestellt werden.
+              </p>
+            ) : (
+              <p className="management-warning-copy">
+                Das Projekt wird wieder öffentlich sichtbar und mit seinen bisherigen Daten
+                zurückgebracht.
+              </p>
+            )}
           </div>
         ) : null}
       </TextPromptOverlay>

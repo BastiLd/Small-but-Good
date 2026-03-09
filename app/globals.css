@@ -200,6 +200,16 @@ a {
   background: rgba(128, 105, 97, 0.08);
 }
 
+.button-danger {
+  background: #b04343;
+  color: #fff;
+}
+
+.button-danger:hover,
+.button-danger:focus-visible {
+  background: #942d2d;
+}
+
 .button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -666,6 +676,133 @@ a {
   border: 1px solid rgba(154, 133, 93, 0.45);
 }
 
+.management-mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.management-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.management-list-pane {
+  min-width: 0;
+}
+
+.management-search-field {
+  margin-top: 0.45rem;
+}
+
+.management-project-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.management-project-button {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  border: 1px solid rgba(154, 133, 93, 0.45);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.36);
+  color: #2b2419;
+  text-align: left;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.management-project-button strong,
+.management-project-button span,
+.management-project-button small {
+  display: block;
+}
+
+.management-project-button span,
+.management-project-button small {
+  color: #5a4930;
+  line-height: 1.4;
+}
+
+.management-project-button:hover,
+.management-project-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(82, 99, 95, 0.38);
+  box-shadow: 0 10px 24px rgba(76, 53, 22, 0.1);
+}
+
+.management-project-button-active {
+  border-color: rgba(82, 99, 95, 0.55);
+  background: rgba(174, 211, 206, 0.18);
+  box-shadow: 0 12px 26px rgba(82, 99, 95, 0.12);
+}
+
+.management-preview-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(154, 133, 93, 0.5);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent),
+    rgba(255, 255, 255, 0.28);
+  padding: 1rem;
+  min-height: 100%;
+}
+
+.management-preview-media {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(154, 133, 93, 0.38);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.management-preview-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.management-preview-copy {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.management-preview-copy h3 {
+  margin: 0;
+}
+
+.management-empty-state {
+  border: 1px dashed rgba(154, 133, 93, 0.55);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.22);
+  padding: 1rem;
+}
+
+.management-empty-state strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.management-empty-state p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.management-warning-copy {
+  margin: 0;
+  line-height: 1.6;
+  color: #5a2424;
+}
+
 .metric-detail-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -817,6 +954,10 @@ a {
     flex-direction: row;
     flex-wrap: wrap;
   }
+
+  .management-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -896,13 +1037,22 @@ a {
     gap: 0.5rem;
   }
 
+  .management-project-list {
+    max-height: none;
+  }
+
+  .management-preview-card {
+    padding: 0.9rem;
+  }
+
   .creator-project-item .button {
     width: 100%;
   }
 
   .button-row .button,
   .queue-actions .button,
-  .stat-button {
+  .stat-button,
+  .management-preview-card .button {
     width: 100%;
   }
 }

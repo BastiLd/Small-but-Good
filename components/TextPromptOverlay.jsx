@@ -6,10 +6,16 @@ import styles from "./TextPromptOverlay.module.css";
 export default function TextPromptOverlay({
   open,
   onClose,
+  onConfirm,
   title,
   confirmLabel = "Schließen",
+  secondaryLabel = null,
+  onSecondaryAction = null,
+  hideConfirmButton = false,
   transparentBackdrop = false,
   warmSurface = false,
+  dangerSurface = false,
+  dangerConfirm = false,
   children
 }) {
   const buttonRef = useRef(null);
@@ -48,7 +54,17 @@ export default function TextPromptOverlay({
   ]
     .filter(Boolean)
     .join(" ");
-  const dialogClassName = [styles.dialog, warmSurface ? styles.dialogWarm : ""]
+  const dialogClassName = [
+    styles.dialog,
+    warmSurface ? styles.dialogWarm : "",
+    dangerSurface ? styles.dialogDanger : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const confirmClassName = [
+    styles.confirmButton,
+    dangerConfirm ? styles.confirmButtonDanger : ""
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -59,9 +75,25 @@ export default function TextPromptOverlay({
           {title ? <h2 className={styles.title}>{title}</h2> : null}
           <div className={styles.body}>{children}</div>
           <div className={styles.actions}>
-            <button ref={buttonRef} type="button" className={styles.confirmButton} onClick={onClose}>
-              {confirmLabel}
-            </button>
+            {secondaryLabel ? (
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={onSecondaryAction || onClose}
+              >
+                {secondaryLabel}
+              </button>
+            ) : null}
+            {!hideConfirmButton ? (
+              <button
+                ref={buttonRef}
+                type="button"
+                className={confirmClassName}
+                onClick={onConfirm || onClose}
+              >
+                {confirmLabel}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
