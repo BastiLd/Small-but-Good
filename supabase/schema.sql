@@ -77,6 +77,9 @@ alter table submission_requests add column if not exists submitted_with_account 
 alter table submission_requests add column if not exists account_email text;
 alter table submission_requests add column if not exists account_user_id uuid;
 alter table submission_requests add column if not exists creator_id uuid references creators(id) on delete set null;
+alter table submission_requests add column if not exists deleted_at timestamptz;
+alter table submission_requests add column if not exists restore_until timestamptz;
+alter table submission_requests add column if not exists approved_intro_text text;
 
 create table if not exists interaction_events (
   id bigserial primary key,
@@ -116,6 +119,9 @@ create index if not exists idx_submission_requests_account_email
   on submission_requests(account_email);
 create index if not exists idx_submission_requests_creator_id
   on submission_requests(creator_id);
+create index if not exists idx_submission_requests_restore_until
+  on submission_requests(restore_until)
+  where deleted_at is not null;
 create index if not exists idx_interaction_events_created_at
   on interaction_events(created_at desc);
 create index if not exists idx_interaction_events_type_created_at
@@ -128,6 +134,7 @@ select
   sr.id,
   sr.project_name,
   sr.description,
+  coalesce(nullif(btrim(sr.approved_intro_text), ''), sr.description) as intro_text,
   sr.website_url,
   sr.card_image_url,
   coalesce(
@@ -139,7 +146,8 @@ select
   c.display_name as creator_display_name
 from submission_requests sr
 left join creators c on c.id = sr.creator_id
-where sr.status = 'approved';
+where sr.status = 'approved'
+  and sr.deleted_at is null;
 
 create or replace view public_creator_profiles as
 select
@@ -159,7 +167,8 @@ select
   status,
   created_at
 from submission_requests
-where status in ('pending', 'approved');
+where status in ('pending', 'approved')
+  and deleted_at is null;
 
 grant select on public_projects to anon, authenticated;
 grant select on public_creator_profiles to anon, authenticated;
