@@ -46,6 +46,16 @@ create table if not exists apps (
   created_at timestamptz not null default now()
 );
 
+alter table apps add column if not exists card_image_url text;
+alter table apps add column if not exists intro_text text;
+alter table apps add column if not exists detail_sections jsonb not null default '[]'::jsonb;
+alter table apps add column if not exists external_button_label text;
+alter table apps add column if not exists platform text;
+alter table apps add column if not exists platform_label text;
+alter table apps add column if not exists type text;
+alter table apps add column if not exists type_label text;
+alter table apps add column if not exists feed_order integer not null default 100;
+
 create table if not exists payments (
   id uuid primary key default gen_random_uuid(),
   app_id uuid references apps(id) on delete set null,
@@ -112,6 +122,7 @@ create unique index if not exists idx_creators_slug
   where slug is not null;
 
 create index if not exists idx_apps_creator on apps(creator_id);
+create index if not exists idx_apps_status_feed_order on apps(status, feed_order, created_at desc);
 create index if not exists idx_payments_creator on payments(creator_id, created_at desc);
 create index if not exists idx_submission_requests_created_at on submission_requests(created_at desc);
 create unique index if not exists idx_submission_requests_public_slug
@@ -154,6 +165,75 @@ left join creators c on c.id = sr.creator_id
 where sr.status = 'approved'
   and sr.deleted_at is null;
 
+drop view if exists public_apps;
+create view public_apps as
+select
+  a.id,
+  a.slug,
+  a.name,
+  a.short_description,
+  coalesce(nullif(btrim(a.long_description), ''), a.short_description) as long_description,
+  coalesce(nullif(btrim(a.intro_text), ''), coalesce(nullif(btrim(a.long_description), ''), a.short_description)) as intro_text,
+  a.website_url,
+  a.card_image_url,
+  coalesce(a.detail_sections, '[]'::jsonb) as detail_sections,
+  a.external_button_label,
+  a.platform,
+  a.platform_label,
+  a.type,
+  a.type_label,
+  a.feed_order,
+  a.created_at,
+  c.slug as creator_slug,
+  c.display_name as creator_display_name
+from apps a
+left join creators c on c.id = a.creator_id
+where a.status = 'published';
+
+drop view if exists public_feed_projects;
+create view public_feed_projects as
+select
+  'app'::text as source,
+  a.id::text as id,
+  a.slug,
+  a.name as title,
+  a.short_description as description,
+  a.intro_text,
+  a.website_url,
+  a.card_image_url,
+  a.detail_sections,
+  a.external_button_label,
+  a.platform,
+  a.platform_label,
+  a.type,
+  a.type_label,
+  a.feed_order,
+  a.created_at as published_at,
+  a.creator_slug,
+  a.creator_display_name
+from public_apps a
+union all
+select
+  'submission'::text as source,
+  p.id::text as id,
+  p.slug,
+  p.project_name as title,
+  p.description,
+  p.intro_text,
+  p.website_url,
+  p.card_image_url,
+  p.detail_sections,
+  p.external_button_label,
+  'community'::text as platform,
+  'Community'::text as platform_label,
+  'submitted_project'::text as type,
+  'Freigegeben'::text as type_label,
+  1000 as feed_order,
+  p.approved_at as published_at,
+  p.creator_slug,
+  p.creator_display_name
+from public_projects p;
+
 drop view if exists public_creator_profiles;
 create view public_creator_profiles as
 select
@@ -178,10 +258,13 @@ where status in ('pending', 'approved')
   and deleted_at is null;
 
 grant select on public_projects to anon, authenticated;
+grant select on public_apps to anon, authenticated;
+grant select on public_feed_projects to anon, authenticated;
 grant select on public_creator_profiles to anon, authenticated;
 grant select on public_submission_duplicates to anon, authenticated;
 
 alter table creators enable row level security;
+alter table apps enable row level security;
 alter table submission_requests enable row level security;
 alter table interaction_events enable row level security;
 alter table admin_users enable row level security;
@@ -311,6 +394,53 @@ with check (
   )
 );
 
+drop policy if exists creator_app_select on apps;
+create policy creator_app_select
+on apps
+for select
+to authenticated
+using (
+  creator_id in (
+    select id
+    from creators
+    where creators.auth_user_id = auth.uid()
+       or lower(creators.email) = lower(auth.email())
+  )
+);
+
+drop policy if exists admin_app_select on apps;
+create policy admin_app_select
+on apps
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from admin_users
+    where admin_users.email = auth.email()
+  )
+);
+
+drop policy if exists admin_app_update on apps;
+create policy admin_app_update
+on apps
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from admin_users
+    where admin_users.email = auth.email()
+  )
+)
+with check (
+  exists (
+    select 1
+    from admin_users
+    where admin_users.email = auth.email()
+  )
+);
+
 drop policy if exists public_interaction_insert on interaction_events;
 create policy public_interaction_insert
 on interaction_events
@@ -339,3 +469,174 @@ on admin_users
 for select
 to authenticated
 using (email = auth.email());
+
+insert into creators (email, display_name, slug, bio)
+values (
+  'bastian.klaus2010@gmail.com',
+  'Bastian Klaus',
+  'bastian-klaus',
+  'Creator hinter CuratedHub.'
+)
+on conflict (email) do update
+set slug = coalesce(creators.slug, excluded.slug),
+    bio = coalesce(creators.bio, excluded.bio);
+
+insert into apps (
+  slug,
+  creator_id,
+  name,
+  short_description,
+  long_description,
+  website_url,
+  category,
+  status,
+  card_image_url,
+  intro_text,
+  detail_sections,
+  external_button_label,
+  platform,
+  platform_label,
+  type,
+  type_label,
+  feed_order
+)
+values
+  (
+    'mfu-nexus-battle',
+    (select id from creators where lower(email) = lower('bastian.klaus2010@gmail.com') limit 1),
+    'MFU Nexus Battle',
+    'Marvel-Kartenkämpfe, Missionen und Story-Mode auf Discord.',
+    'Das ist mein Bot.
+Er ist für ein Marvel-Kartenspiel gemacht.
+Du kannst mit den Karten gegen Freunde oder gegen den Bot kämpfen, auf Missionen gehen und ein Story-Mode ist ebenfalls in Arbeit.
+Mehr Infos gibt es auf dem Server. Wenn du Interesse hast, komm gern in die Marvel-Community.',
+    'https://discord.gg/QFrGdyaGPj',
+    'discord',
+    'published',
+    '/images/Logo_Nexus_Battle.png',
+    'Das ist mein Bot.
+Er ist für ein Marvel-Kartenspiel gemacht.
+Du kannst mit den Karten gegen Freunde oder gegen den Bot kämpfen, auf Missionen gehen und ein Story-Mode ist ebenfalls in Arbeit.
+Mehr Infos gibt es auf dem Server. Wenn du Interesse hast, komm gern in die Marvel-Community.',
+    '[
+      {
+        "id": "mfu-story",
+        "heading": "Was dich erwartet",
+        "text": "Das Projekt verbindet Marvel-Kartenkämpfe mit Missionen und einem Story-Mode. Alles ist darauf ausgelegt, dass man direkt auf Discord loslegen kann."
+      },
+      {
+        "id": "mfu-features",
+        "heading": "Hauptfunktionen",
+        "text": "1v1-Kartenkämpfe gegen Freunde oder den Bot\nTägliche Belohnungen und Kartenfortschritt\nMissionsmodus mit Belohnungen\nInteraktiver Story-Mode (in Arbeit)"
+      },
+      {
+        "id": "mfu-commands",
+        "heading": "Wichtige Befehle",
+        "text": "/täglich - Hole deine tägliche Belohnung ab.\n/mission - Schicke dein Team auf eine Mission.\n/geschichte - Starte eine interaktive Story.\n/kampf - Kämpfe im 1v1 gegen Spieler oder Bot.\n/sammlung - Zeige deine Karten-Sammlung.\n/verbessern - Verstärke deine Karten mit Infinitydust.\n/anfang - Startmenü mit Schnellzugriff."
+      }
+    ]'::jsonb,
+    'Zum Discord-Server',
+    'discord',
+    'Discord',
+    'discord_bot',
+    'Discord-Bot',
+    10
+  ),
+  (
+    'marvel-fan-universe-app',
+    (select id from creators where lower(email) = lower('bastian.klaus2010@gmail.com') limit 1),
+    'Marvel Fan Universe App',
+    'Marvel-Film-News, Charakter-Infos und Post-Credit-Hinweise.',
+    'Marvel Film News
+Marvel Film Infos
+
+Tippe auf den Film und du erfährst, ob es eine Post-Credit-Scene gibt und ob es mehrere gibt,
+damit du weißt, ob du warten musst oder direkt am Ende des Filmes gehen kannst.
+
+Du willst Infos zu einem Charakter, kein Problem.
+Suche ihn und du bekommst alle Infos, die du brauchst.
+
+Comic- und Game-Infos kommen bald dazu.',
+    null,
+    'app',
+    'published',
+    '/images/MFU-App.png',
+    'Marvel Film News
+Marvel Film Infos
+
+Tippe auf den Film und du erfährst, ob es eine Post-Credit-Scene gibt und ob es mehrere gibt,
+damit du weißt, ob du warten musst oder direkt am Ende des Filmes gehen kannst.
+
+Du willst Infos zu einem Charakter, kein Problem.
+Suche ihn und du bekommst alle Infos, die du brauchst.
+
+Comic- und Game-Infos kommen bald dazu.',
+    '[
+      {
+        "id": "mfu-app-overview",
+        "heading": "Was die App macht",
+        "text": "Die App bündelt Marvel-Film-News, Charakter-Infos und Post-Credit-Hinweise in einer Oberfläche."
+      },
+      {
+        "id": "mfu-app-features",
+        "heading": "Die wichtigsten Inhalte",
+        "text": "Marvel Film News\nMarvel Film Infos\nPost-Credit-Scene-Hinweise pro Film\nCharaktersuche mit allen wichtigen Infos\nComic- und Game-Infos kommen bald dazu."
+      }
+    ]'::jsonb,
+    'Demnächst verfügbar',
+    'app',
+    'App',
+    'fan_app',
+    'Fan-App',
+    20
+  ),
+  (
+    'perryrat',
+    (select id from creators where lower(email) = lower('bastian.klaus2010@gmail.com') limit 1),
+    'PerryRat',
+    'Das ist ein Freund von mir, der richtig coole Animationen macht und richtig gut Videos bearbeiten kann. Schaut euch gerne sein Projekt an!',
+    'Das ist ein Freund von mir, der richtig coole Animationen macht und richtig gut Videos bearbeiten kann. Schaut euch gerne sein Projekt an!',
+    'https://www.youtube.com/@Perryrat',
+    'youtube',
+    'published',
+    '/images/Perry-Rat_notinvbackg.png',
+    'Das ist ein Freund von mir, der richtig coole Animationen macht und richtig gut Videos bearbeiten kann. Schaut euch gerne sein Projekt an!',
+    '[
+      {
+        "id": "perryrat-overview",
+        "heading": "Kanalprofil",
+        "text": "PerryRat ist ein Kanal mit Animationen und kreativ bearbeiteten Videos."
+      },
+      {
+        "id": "perryrat-gallery",
+        "heading": "Einblicke",
+        "text": "Hier bekommst du einen Eindruck von den Videos und dem Stil des Kanals.",
+        "imageUrl": "/images/Perry Videos.png",
+        "imageAlt": "Eine Auswahl von Videos vom PerryRat-Kanal"
+      }
+    ]'::jsonb,
+    'Zum YouTube-Kanal',
+    'youtube',
+    'YouTube',
+    'creator_channel',
+    'Animationskanal',
+    30
+  )
+on conflict (slug) do update
+set
+  creator_id = excluded.creator_id,
+  name = excluded.name,
+  short_description = excluded.short_description,
+  long_description = excluded.long_description,
+  website_url = excluded.website_url,
+  category = excluded.category,
+  status = excluded.status,
+  card_image_url = excluded.card_image_url,
+  intro_text = excluded.intro_text,
+  detail_sections = excluded.detail_sections,
+  external_button_label = excluded.external_button_label,
+  platform = excluded.platform,
+  platform_label = excluded.platform_label,
+  type = excluded.type,
+  type_label = excluded.type_label,
+  feed_order = excluded.feed_order;
