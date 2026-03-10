@@ -47,11 +47,74 @@
   background: rgba(255, 255, 255, 0.45);
 }
 
+.previewImageButton {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.previewImageButton:focus-visible,
+.coverPreviewButton:focus-visible {
+  outline: 3px solid rgba(132, 168, 162, 0.75);
+  outline-offset: 2px;
+}
+
 .previewImage {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 10;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+.coverEditor {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.coverPreviewButton {
+  width: 100%;
+  border: 1px solid rgba(154, 133, 93, 0.38);
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+}
+
+.coverPreviewImage {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+}
+
+.imageControlCard {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid rgba(154, 133, 93, 0.42);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.26);
+  padding: 1rem;
+}
+
+.rangeInput {
+  width: 100%;
+  margin-top: 0.7rem;
+}
+
+.sliderMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sliderValue {
+  font-weight: 700;
+  color: #463622;
 }
 
 .sectionList {

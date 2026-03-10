@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { withBasePath } from "../../lib/basePath";
-import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../lib/project-content";
+import { buildCardImageStyle, DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../lib/project-content";
 import { fetchPublicProjectsByCreatorSlug } from "../../lib/public-projects";
 import {
   fetchServerPublicCreatorBySlug,
@@ -75,12 +75,17 @@ export default function PublicCreatorProfilePage({ creator, projects: initialPro
         <section className="metric-detail-list" aria-label={`Projekte von ${creator.display_name}`}>
           {projects.map((project) => (
             <article key={project.id} className="metric-detail-item">
-              <img
-                src={withBasePath(project.screenshots?.[0] || "/images/project-placeholder.svg")}
-                alt={`${project.title} Vorschau`}
-                className="detail-image"
-                style={{ maxHeight: "220px", marginBottom: "0.8rem" }}
-              />
+              <div className="detail-image-frame" style={{ marginBottom: "0.8rem" }}>
+                <img
+                  src={withBasePath(project.screenshots?.[0] || "/images/project-placeholder.svg")}
+                  alt={`${project.title} Vorschau`}
+                  className="detail-image"
+                  style={{
+                    ...buildCardImageStyle(project.cardImageScale),
+                    maxHeight: "220px"
+                  }}
+                />
+              </div>
               <strong>{project.title}</strong>
               <p>{project.shortDesc}</p>
               <div className="button-row">

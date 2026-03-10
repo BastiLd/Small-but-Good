@@ -47,6 +47,7 @@ create table if not exists apps (
 );
 
 alter table apps add column if not exists card_image_url text;
+alter table apps add column if not exists card_image_scale double precision not null default 1;
 alter table apps add column if not exists intro_text text;
 alter table apps add column if not exists detail_sections jsonb not null default '[]'::jsonb;
 alter table apps add column if not exists external_button_label text;
@@ -55,6 +56,9 @@ alter table apps add column if not exists platform_label text;
 alter table apps add column if not exists type text;
 alter table apps add column if not exists type_label text;
 alter table apps add column if not exists feed_order integer not null default 100;
+alter table apps drop constraint if exists apps_card_image_scale_check;
+alter table apps add constraint apps_card_image_scale_check
+  check (card_image_scale >= 1 and card_image_scale <= 2.4);
 
 create table if not exists payments (
   id uuid primary key default gen_random_uuid(),
@@ -83,6 +87,7 @@ alter table submission_requests add column if not exists reviewed_at timestamptz
 alter table submission_requests add column if not exists approved_at timestamptz;
 alter table submission_requests add column if not exists public_slug text;
 alter table submission_requests add column if not exists card_image_url text;
+alter table submission_requests add column if not exists card_image_scale double precision not null default 1;
 alter table submission_requests add column if not exists submitted_with_account boolean not null default false;
 alter table submission_requests add column if not exists account_email text;
 alter table submission_requests add column if not exists account_user_id uuid;
@@ -92,6 +97,9 @@ alter table submission_requests add column if not exists restore_until timestamp
 alter table submission_requests add column if not exists approved_intro_text text;
 alter table submission_requests add column if not exists detail_sections jsonb not null default '[]'::jsonb;
 alter table submission_requests add column if not exists external_button_label text;
+alter table submission_requests drop constraint if exists submission_requests_card_image_scale_check;
+alter table submission_requests add constraint submission_requests_card_image_scale_check
+  check (card_image_scale >= 1 and card_image_scale <= 2.4);
 
 create table if not exists interaction_events (
   id bigserial primary key,
@@ -151,6 +159,7 @@ select
   coalesce(nullif(btrim(sr.approved_intro_text), ''), sr.description) as intro_text,
   sr.website_url,
   sr.card_image_url,
+  coalesce(sr.card_image_scale, 1) as card_image_scale,
   coalesce(sr.detail_sections, '[]'::jsonb) as detail_sections,
   sr.external_button_label,
   coalesce(
@@ -176,6 +185,7 @@ select
   coalesce(nullif(btrim(a.intro_text), ''), coalesce(nullif(btrim(a.long_description), ''), a.short_description)) as intro_text,
   a.website_url,
   a.card_image_url,
+  coalesce(a.card_image_scale, 1) as card_image_scale,
   coalesce(a.detail_sections, '[]'::jsonb) as detail_sections,
   a.external_button_label,
   a.platform,
@@ -201,6 +211,7 @@ select
   a.intro_text,
   a.website_url,
   a.card_image_url,
+  a.card_image_scale,
   a.detail_sections,
   a.external_button_label,
   a.platform,
@@ -222,6 +233,7 @@ select
   p.intro_text,
   p.website_url,
   p.card_image_url,
+  p.card_image_scale,
   p.detail_sections,
   p.external_button_label,
   'community'::text as platform,
@@ -491,6 +503,7 @@ insert into apps (
   category,
   status,
   card_image_url,
+  card_image_scale,
   intro_text,
   detail_sections,
   external_button_label,
@@ -514,6 +527,7 @@ Mehr Infos gibt es auf dem Server. Wenn du Interesse hast, komm gern in die Marv
     'discord',
     'published',
     '/images/Logo_Nexus_Battle.png',
+    1,
     'Das ist mein Bot.
 Er ist für ein Marvel-Kartenspiel gemacht.
 Du kannst mit den Karten gegen Freunde oder gegen den Bot kämpfen, auf Missionen gehen und ein Story-Mode ist ebenfalls in Arbeit.
@@ -561,6 +575,7 @@ Comic- und Game-Infos kommen bald dazu.',
     'app',
     'published',
     '/images/MFU-App.png',
+    1,
     'Marvel Film News
 Marvel Film Infos
 
@@ -600,6 +615,7 @@ Comic- und Game-Infos kommen bald dazu.',
     'youtube',
     'published',
     '/images/Perry-Rat_notinvbackg.png',
+    1,
     'Das ist ein Freund von mir, der richtig coole Animationen macht und richtig gut Videos bearbeiten kann. Schaut euch gerne sein Projekt an!',
     '[
       {
@@ -632,6 +648,7 @@ set
   category = excluded.category,
   status = excluded.status,
   card_image_url = excluded.card_image_url,
+  card_image_scale = excluded.card_image_scale,
   intro_text = excluded.intro_text,
   detail_sections = excluded.detail_sections,
   external_button_label = excluded.external_button_label,

@@ -4,6 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { useRouter } from "next/navigation";
 import styles from "./AppIntroOverlay.module.css";
 import { withBasePath } from "../lib/basePath";
+import { buildCardImageStyle, normalizeCardImageScale } from "../lib/project-content";
 
 const INTRO_EVENT = "app-intro:open";
 const CONTENT_REVEAL_DELAY_MS = 0;
@@ -16,6 +17,7 @@ export function openIntroFor(appId, options = {}) {
       detail: {
         appId,
         imagePublicPath: options.imagePublicPath,
+        imageScale: options.imageScale,
         introText: options.introText,
         detailPath: options.detailPath
       }
@@ -26,7 +28,7 @@ export function openIntroFor(appId, options = {}) {
 }
 
 const AppIntroOverlay = forwardRef(function AppIntroOverlay(
-  { appId, imagePublicPath = "", introText = "", detailPath = null },
+  { appId, imagePublicPath = "", imageScale = 1, introText = "", detailPath = null },
   ref
 ) {
   const router = useRouter();
@@ -38,7 +40,13 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
   const [mounted, setMounted] = useState(false);
   const [fadeActive, setFadeActive] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
-  const [payload, setPayload] = useState({ appId, imagePublicPath, introText, detailPath });
+  const [payload, setPayload] = useState({
+    appId,
+    imagePublicPath,
+    imageScale,
+    introText,
+    detailPath
+  });
 
   const getReducedMotion = () => {
     if (typeof window === "undefined" || !window.matchMedia) return false;
@@ -80,6 +88,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
       const merged = {
         appId: nextPayload?.appId || appId,
         imagePublicPath: nextPayload?.imagePublicPath || imagePublicPath,
+        imageScale: normalizeCardImageScale(nextPayload?.imageScale || imageScale),
         introText: nextPayload?.introText || introText,
         detailPath:
           typeof nextPayload?.detailPath !== "undefined" ? nextPayload.detailPath : detailPath
@@ -113,7 +122,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
         setContentVisible(true);
       }
     },
-    [appId, detailPath, imagePublicPath, introText]
+    [appId, detailPath, imagePublicPath, imageScale, introText]
   );
 
   useImperativeHandle(
@@ -230,6 +239,7 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
                 src={payload.imagePublicPath}
                 alt={`Intro-Bild für ${payload.appId}`}
                 className={styles.image}
+                style={buildCardImageStyle(payload.imageScale)}
               />
             </div>
           ) : null}

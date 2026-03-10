@@ -4,7 +4,11 @@ import styles from "./StorePreview.module.css";
 import { openIntroFor } from "./AppIntroOverlay";
 import { withBasePath } from "../lib/basePath";
 import { trackInteraction } from "../lib/interaction-tracking";
-import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../lib/project-content";
+import {
+  buildCardImageStyle,
+  DEFAULT_EXTERNAL_BUTTON_LABEL,
+  normalizeCardImageScale
+} from "../lib/project-content";
 
 export default function StorePreview({ app }) {
   if (!app) return null;
@@ -28,6 +32,7 @@ export default function StorePreview({ app }) {
 
   const mainShot = screenshots[0] || "/images/project-placeholder.svg";
   const resolvedMainShot = withBasePath(mainShot);
+  const imageScale = normalizeCardImageScale(app.cardImageScale);
   const isDiscordBot = type === "discord_bot";
   const isPrivate = app.isPrivate || app.private || app.visibility === "private";
 
@@ -73,6 +78,7 @@ export default function StorePreview({ app }) {
 
     const opened = openIntroFor(runtimeId || id, {
       imagePublicPath: withBasePath(app.introImage || mainShot),
+      imageScale,
       introText: app.introText || shortDesc,
       detailPath: detailRoute
     });
@@ -115,6 +121,7 @@ export default function StorePreview({ app }) {
             alt={`${title} Screenshot`}
             className={screenshotClassName}
             loading="lazy"
+            style={buildCardImageStyle(imageScale)}
           />
         </button>
       </div>

@@ -4,7 +4,7 @@ import InteractionTracker from "../../../components/InteractionTracker";
 import ProjectContentSections from "../../../components/ProjectContentSections";
 import TrackedExternalLink from "../../../components/TrackedExternalLink";
 import { withBasePath } from "../../../lib/basePath";
-import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../../lib/project-content";
+import { buildCardImageStyle, DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../../lib/project-content";
 import { fetchServerPublicAppBySlug, fetchServerPublicApps } from "../../../lib/public-apps-server";
 
 export async function generateStaticParams() {
@@ -32,11 +32,14 @@ export default async function AppDetailPage({ params }) {
       />
 
       <div>
-        <img
-          src={withBasePath(app.screenshots?.[0] || "/images/project-placeholder.svg")}
-          alt={`${app.title} Logo`}
-          className="detail-image"
-        />
+        <div className="detail-image-frame">
+          <img
+            src={withBasePath(app.screenshots?.[0] || "/images/project-placeholder.svg")}
+            alt={`${app.title} Logo`}
+            className="detail-image"
+            style={buildCardImageStyle(app.cardImageScale)}
+          />
+        </div>
 
         <div className="detail-chip-row">
           <span className="detail-chip">{app.platformLabel || app.platform}</span>

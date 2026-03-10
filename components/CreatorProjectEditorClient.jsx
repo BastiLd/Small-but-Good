@@ -4,9 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { withBasePath } from "../lib/basePath";
 import {
+  buildCardImageStyle,
   createProjectSection,
+  DEFAULT_CARD_IMAGE_SCALE,
   DEFAULT_EXTERNAL_BUTTON_LABEL,
   isEditorColumnMissingError,
+  normalizeCardImageScale,
   normalizeProjectSections,
   resolveExternalButtonLabel,
   serializeProjectSections
@@ -26,6 +29,7 @@ const submissionEditorSelect = [
   "approved_intro_text",
   "website_url",
   "card_image_url",
+  "card_image_scale",
   "public_slug",
   "status",
   "approved_at",
@@ -43,6 +47,7 @@ const submissionFallbackEditorSelect = [
   "approved_intro_text",
   "website_url",
   "card_image_url",
+  "card_image_scale",
   "public_slug",
   "status",
   "approved_at",
@@ -58,6 +63,7 @@ const appEditorSelect = [
   "intro_text",
   "website_url",
   "card_image_url",
+  "card_image_scale",
   "detail_sections",
   "external_button_label",
   "platform",
@@ -93,6 +99,7 @@ function buildFormState(row, source) {
       description: row?.short_description || row?.long_description || "",
       introText: row?.intro_text || "",
       cardImageUrl: row?.card_image_url || "",
+      cardImageScale: normalizeCardImageScale(row?.card_image_scale),
       externalButtonLabel: row?.external_button_label || "",
       sections: normalizeProjectSections(row?.detail_sections),
       platformLabel: row?.platform_label || row?.platform || "App",
@@ -110,6 +117,7 @@ function buildFormState(row, source) {
     description: row?.description || "",
     introText: row?.approved_intro_text || "",
     cardImageUrl: row?.card_image_url || "",
+    cardImageScale: normalizeCardImageScale(row?.card_image_scale),
     externalButtonLabel: row?.external_button_label || "",
     sections: normalizeProjectSections(row?.detail_sections),
     platformLabel: "Community",
@@ -178,12 +186,14 @@ export default function CreatorProjectEditorClient() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [project, setProject] = useState(null);
+  const [isTitleImageControlsOpen, setIsTitleImageControlsOpen] = useState(false);
   const [form, setForm] = useState(() => ({
     projectName: "",
     websiteUrl: "",
     description: "",
     introText: "",
     cardImageUrl: "",
+    cardImageScale: DEFAULT_CARD_IMAGE_SCALE,
     externalButtonLabel: "",
     sections: [],
     platformLabel: "Community",
@@ -201,6 +211,7 @@ export default function CreatorProjectEditorClient() {
   const sessionEmail = session?.user?.email || "";
   const previewSections = useMemo(() => serializeProjectSections(form.sections), [form.sections]);
   const previewImage = withBasePath(form.cardImageUrl.trim() || PLACEHOLDER_IMAGE);
+  const previewImageScale = normalizeCardImageScale(form.cardImageScale);
   const externalButtonLabel = resolveExternalButtonLabel(form.externalButtonLabel);
   const detailHref =
     projectSource === "app"
@@ -383,7 +394,10 @@ export default function CreatorProjectEditorClient() {
 
   function updateField(event) {
     const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+    setForm((current) => ({
+      ...current,
+      [name]: name === "cardImageScale" ? normalizeCardImageScale(value) : value
+    }));
   }
 
   function updateSection(sectionId, patch) {
@@ -457,6 +471,7 @@ export default function CreatorProjectEditorClient() {
         intro_text: form.introText.trim() || null,
         website_url: form.websiteUrl.trim() || null,
         card_image_url: form.cardImageUrl.trim() || null,
+        card_image_scale: previewImageScale,
         external_button_label: form.externalButtonLabel.trim() || null,
         detail_sections: previewSections,
         platform_label: form.platformLabel.trim() || "App",
@@ -502,6 +517,7 @@ export default function CreatorProjectEditorClient() {
       description: form.description.trim(),
       approved_intro_text: form.introText.trim() || null,
       card_image_url: form.cardImageUrl.trim() || null,
+      card_image_scale: previewImageScale,
       external_button_label: form.externalButtonLabel.trim() || null,
       detail_sections: previewSections
     };
@@ -764,6 +780,59 @@ export default function CreatorProjectEditorClient() {
             ) : null}
           </div>
 
+          <div className={styles.coverEditor}>
+            <button
+              type="button"
+              className={styles.coverPreviewButton}
+              onClick={() => setIsTitleImageControlsOpen((current) => !current)}
+              aria-expanded={isTitleImageControlsOpen}
+            >
+              <img
+                src={previewImage}
+                alt={form.projectName.trim() || "Titelbild-Vorschau"}
+                className={styles.coverPreviewImage}
+                style={buildCardImageStyle(previewImageScale)}
+              />
+            </button>
+            <p className={styles.muted}>
+              Klicke auf das Titelbild, um den Zoom einzustellen. Standard ist 100 %, damit das
+              komplette Bild sichtbar bleibt.
+            </p>
+          </div>
+
+          {isTitleImageControlsOpen ? (
+            <div className={styles.imageControlCard}>
+              <label className="field" style={{ marginTop: 0 }}>
+                <span className="field-label">Titelbild-Zoom</span>
+                <input
+                  className={styles.rangeInput}
+                  type="range"
+                  name="cardImageScale"
+                  min="1"
+                  max="2.4"
+                  step="0.05"
+                  value={previewImageScale}
+                  onChange={updateField}
+                />
+              </label>
+              <div className={styles.sliderMetaRow}>
+                <span className={styles.sliderValue}>{Math.round(previewImageScale * 100)} %</span>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      cardImageScale: DEFAULT_CARD_IMAGE_SCALE
+                    }))
+                  }
+                >
+                  Auf Standard zurücksetzen
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="section-header">
             <div>
               <h2 style={{ marginBottom: "0.35rem" }}>Inhaltsabschnitte</h2>
@@ -915,11 +984,19 @@ export default function CreatorProjectEditorClient() {
           </div>
 
           <div className={styles.previewImageWrap}>
-            <img
-              src={previewImage}
-              alt={form.projectName.trim() || "Projektvorschau"}
-              className={styles.previewImage}
-            />
+            <button
+              type="button"
+              className={styles.previewImageButton}
+              onClick={() => setIsTitleImageControlsOpen((current) => !current)}
+              aria-expanded={isTitleImageControlsOpen}
+            >
+              <img
+                src={previewImage}
+                alt={form.projectName.trim() || "Projektvorschau"}
+                className={styles.previewImage}
+                style={buildCardImageStyle(previewImageScale)}
+              />
+            </button>
           </div>
 
           <div className="detail-chip-row" style={{ marginTop: 0 }}>
