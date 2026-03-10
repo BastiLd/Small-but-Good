@@ -4,6 +4,7 @@ import InteractionTracker from "../../../components/InteractionTracker";
 import TrackedExternalLink from "../../../components/TrackedExternalLink";
 import { APPS, getAppById } from "../../../lib/apps";
 import { withBasePath } from "../../../lib/basePath";
+import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../../lib/project-content";
 
 export function generateStaticParams() {
   return APPS.map((app) => ({ id: app.id }));
@@ -12,6 +13,7 @@ export function generateStaticParams() {
 export default function AppDetailPage({ params }) {
   const app = getAppById(params?.id);
   if (!app) notFound();
+  const externalButtonLabel = app.externalButtonLabel || DEFAULT_EXTERNAL_BUTTON_LABEL;
 
   return (
     <article className="card detail-wrap" aria-label={`${app.title} Details`}>
@@ -43,7 +45,7 @@ export default function AppDetailPage({ params }) {
             itemSource={app.itemSource || "local"}
             className="button detail-inline-btn"
           >
-            Zur Originalseite
+            {externalButtonLabel}
           </TrackedExternalLink>
         ) : null}
       </div>

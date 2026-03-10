@@ -4,6 +4,7 @@ import styles from "./StorePreview.module.css";
 import { openIntroFor } from "./AppIntroOverlay";
 import { withBasePath } from "../lib/basePath";
 import { trackInteraction } from "../lib/interaction-tracking";
+import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../lib/project-content";
 
 export default function StorePreview({ app }) {
   if (!app) return null;
@@ -41,6 +42,7 @@ export default function StorePreview({ app }) {
 
   const detailRoute =
     typeof detailPath !== "undefined" ? detailPath : itemSource === "local" ? `/app/${id}` : null;
+  const externalButtonLabel = app.externalButtonLabel || DEFAULT_EXTERNAL_BUTTON_LABEL;
 
   const screenshotClassName = [
     styles.screenshot,
@@ -164,7 +166,7 @@ export default function StorePreview({ app }) {
             aria-label={`${title} auf Originalseite öffnen`}
             disabled={!storeUrl}
           >
-            Zur Originalseite
+            {externalButtonLabel}
           </button>
         </div>
       </div>

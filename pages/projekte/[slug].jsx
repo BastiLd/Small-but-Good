@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import InteractionTracker from "../../components/InteractionTracker";
+import ProjectContentSections from "../../components/ProjectContentSections";
 import TrackedExternalLink from "../../components/TrackedExternalLink";
 import { withBasePath } from "../../lib/basePath";
+import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../lib/project-content";
+import { fetchPublicProjectBySlug } from "../../lib/public-projects";
 import {
   fetchServerPublicProjectBySlug,
   fetchServerPublicProjects
@@ -32,7 +36,28 @@ export async function getStaticProps({ params }) {
   };
 }
 
-export default function PublicProjectDetailPage({ project }) {
+export default function PublicProjectDetailPage({ project: initialProject }) {
+  const [project, setProject] = useState(initialProject);
+  const externalButtonLabel = project.externalButtonLabel || DEFAULT_EXTERNAL_BUTTON_LABEL;
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLatestProject() {
+      const nextProject = await fetchPublicProjectBySlug(initialProject?.runtimeId);
+
+      if (active && nextProject) {
+        setProject(nextProject);
+      }
+    }
+
+    loadLatestProject();
+
+    return () => {
+      active = false;
+    };
+  }, [initialProject?.runtimeId]);
+
   return (
     <article className="card detail-wrap" aria-label={`${project.title} Details`}>
       <InteractionTracker
@@ -63,7 +88,7 @@ export default function PublicProjectDetailPage({ project }) {
             itemSource={project.itemSource || "submission"}
             className="button detail-inline-btn"
           >
-            Zur Originalseite
+            {externalButtonLabel}
           </TrackedExternalLink>
         ) : null}
 
@@ -78,8 +103,10 @@ export default function PublicProjectDetailPage({ project }) {
         <h1 style={{ marginTop: 0 }}>{project.title}</h1>
         {project.longDescription ? <p className="detail-text">{project.longDescription}</p> : null}
 
+        <ProjectContentSections title={project.title} sections={project.contentSections} />
+
         <p className="detail-text">
-          Dieses Community-Projekt wurde über CuratedHub eingereicht und freigegeben.
+          Dieses Community-Projekt wurde Ã¼ber CuratedHub eingereicht und freigegeben.
         </p>
 
         {project.creatorDisplayName ? (
@@ -94,7 +121,7 @@ export default function PublicProjectDetailPage({ project }) {
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zurück zur Übersicht
+          ZurÃ¼ck zur Ãœbersicht
         </Link>
       </div>
     </article>

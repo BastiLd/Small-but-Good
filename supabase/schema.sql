@@ -80,6 +80,8 @@ alter table submission_requests add column if not exists creator_id uuid referen
 alter table submission_requests add column if not exists deleted_at timestamptz;
 alter table submission_requests add column if not exists restore_until timestamptz;
 alter table submission_requests add column if not exists approved_intro_text text;
+alter table submission_requests add column if not exists detail_sections jsonb not null default '[]'::jsonb;
+alter table submission_requests add column if not exists external_button_label text;
 
 create table if not exists interaction_events (
   id bigserial primary key,
@@ -138,6 +140,8 @@ select
   coalesce(nullif(btrim(sr.approved_intro_text), ''), sr.description) as intro_text,
   sr.website_url,
   sr.card_image_url,
+  coalesce(sr.detail_sections, '[]'::jsonb) as detail_sections,
+  sr.external_button_label,
   coalesce(
     sr.public_slug,
     public.slugify_text(sr.project_name) || '-' || substring(replace(sr.id::text, '-', '') from 1 for 8)
@@ -272,6 +276,38 @@ with check (
     select 1
     from admin_users
     where admin_users.email = auth.email()
+  )
+);
+
+drop policy if exists creator_submission_update on submission_requests;
+create policy creator_submission_update
+on submission_requests
+for update
+to authenticated
+using (
+  status = 'approved'
+  and (
+    lower(email) = lower(auth.email())
+    or lower(coalesce(account_email, '')) = lower(auth.email())
+    or account_user_id = auth.uid()
+    or creator_id in (
+      select id
+      from creators
+      where creators.auth_user_id = auth.uid()
+    )
+  )
+)
+with check (
+  status = 'approved'
+  and (
+    lower(email) = lower(auth.email())
+    or lower(coalesce(account_email, '')) = lower(auth.email())
+    or account_user_id = auth.uid()
+    or creator_id in (
+      select id
+      from creators
+      where creators.auth_user_id = auth.uid()
+    )
   )
 );
 

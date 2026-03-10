@@ -902,9 +902,16 @@ export default function CreatorDashboardClient() {
                         <p>{project.meta}</p>
                         <small>Letzte Aktivität: {formatShortDate(project.latestActivity)}</small>
                       </div>
-                      <Link href={project.href} className="button button-secondary">
-                        Projekt ansehen
-                      </Link>
+                      <div className="button-row creator-project-actions">
+                        <Link href={project.href} className="button button-secondary">
+                          Projekt ansehen
+                        </Link>
+                        {project.editorHref ? (
+                          <Link href={project.editorHref} className="button">
+                            Bearbeiten
+                          </Link>
+                        ) : null}
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -1145,6 +1152,12 @@ export default function CreatorDashboardClient() {
                             Projektseite öffnen
                           </Link>
                         ) : null}
+                        <Link
+                          href={`/creator/dashboard/editor?id=${selectedManagedProject.id}`}
+                          className="button button-edit"
+                        >
+                          Bearbeiten
+                        </Link>
                         <button
                           type="button"
                           className={`button ${

@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { withBasePath } from "../../lib/basePath";
+import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../lib/project-content";
+import { fetchPublicProjectsByCreatorSlug } from "../../lib/public-projects";
 import {
   fetchServerPublicCreatorBySlug,
   fetchServerPublicCreators
@@ -34,7 +37,27 @@ export async function getStaticProps({ params }) {
   };
 }
 
-export default function PublicCreatorProfilePage({ creator, projects }) {
+export default function PublicCreatorProfilePage({ creator, projects: initialProjects }) {
+  const [projects, setProjects] = useState(initialProjects);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadLatestProjects() {
+      const nextProjects = await fetchPublicProjectsByCreatorSlug(creator.slug);
+
+      if (active) {
+        setProjects(nextProjects);
+      }
+    }
+
+    loadLatestProjects();
+
+    return () => {
+      active = false;
+    };
+  }, [creator.slug]);
+
   return (
     <section className="dashboard-stack">
       <article className="card">
@@ -44,7 +67,7 @@ export default function PublicCreatorProfilePage({ creator, projects }) {
         </p>
         <p className="detail-text">Freigegebene Projekte: {projects.length}</p>
         <Link href="/" className="button detail-inline-btn">
-          Zurück zur Übersicht
+          ZurÃ¼ck zur Ãœbersicht
         </Link>
       </article>
 
@@ -71,7 +94,7 @@ export default function PublicCreatorProfilePage({ creator, projects }) {
                     rel="noreferrer"
                     className="button"
                   >
-                    Zur Originalseite
+                    {project.externalButtonLabel || DEFAULT_EXTERNAL_BUTTON_LABEL}
                   </a>
                 ) : null}
               </div>

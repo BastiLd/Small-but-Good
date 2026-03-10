@@ -210,6 +210,16 @@ a {
   background: #942d2d;
 }
 
+.button-edit {
+  background: #56db83;
+  color: #173524;
+}
+
+.button-edit:hover,
+.button-edit:focus-visible {
+  background: #46c771;
+}
+
 .button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -562,6 +572,12 @@ a {
   display: block;
   margin: 0;
   line-height: 1.45;
+}
+
+.creator-project-actions {
+  justify-content: flex-end;
+  align-self: stretch;
+  margin-top: 0;
 }
 
 .creator-project-meta-row {
