@@ -73,7 +73,7 @@ export default function PublicCreatorProfilePage({ creator, projects: initialPro
       ]);
       const nextProjects = mergeFeedProjects(nextAppProjects, nextCommunityProjects);
 
-      if (active) {
+      if (active && (nextProjects.length || !projects.length)) {
         setProjects(nextProjects);
       }
     }
@@ -83,7 +83,7 @@ export default function PublicCreatorProfilePage({ creator, projects: initialPro
     return () => {
       active = false;
     };
-  }, [creator.slug]);
+  }, [creator.slug, projects.length]);
 
   return (
     <section className="dashboard-stack">
