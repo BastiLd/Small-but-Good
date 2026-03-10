@@ -1,25 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StorePreview from "./StorePreview";
 import InteractionTracker from "./InteractionTracker";
 import { browserSupabase } from "../lib/supabase-browser";
+import { fetchPublicApps } from "../lib/public-apps";
 import { fetchPublicProjects } from "../lib/public-projects";
+import { mergeFeedProjects } from "../lib/project-utils";
 
 export default function ProjectGrid({ initialApps }) {
-  const [communityApps, setCommunityApps] = useState([]);
+  const [visibleApps, setVisibleApps] = useState(initialApps);
+  const fallbackLocalApps = useMemo(
+    () => initialApps.filter((app) => app?.source === "app"),
+    [initialApps]
+  );
 
   useEffect(() => {
     let active = true;
 
-    async function loadApprovedProjects() {
-      const approvedApps = await fetchPublicProjects();
+    async function loadFeedProjects() {
+      const [localApps, communityApps] = await Promise.all([
+        fetchPublicApps(),
+        fetchPublicProjects()
+      ]);
+      const nextLocalApps = localApps.length ? localApps : fallbackLocalApps;
+      const nextVisibleApps = mergeFeedProjects(nextLocalApps, communityApps);
+
       if (active) {
-        setCommunityApps(approvedApps);
+        setVisibleApps(nextVisibleApps);
       }
     }
 
-    loadApprovedProjects();
+    loadFeedProjects();
 
     if (!browserSupabase) {
       return () => {
@@ -27,24 +39,34 @@ export default function ProjectGrid({ initialApps }) {
       };
     }
 
-    const channel = browserSupabase
+    const submissionChannel = browserSupabase
       .channel("approved-projects")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "submission_requests" },
         () => {
-          loadApprovedProjects();
+          loadFeedProjects();
+        }
+      )
+      .subscribe();
+
+    const appsChannel = browserSupabase
+      .channel("published-apps")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "apps" },
+        () => {
+          loadFeedProjects();
         }
       )
       .subscribe();
 
     return () => {
       active = false;
-      browserSupabase.removeChannel(channel);
+      browserSupabase.removeChannel(submissionChannel);
+      browserSupabase.removeChannel(appsChannel);
     };
-  }, [initialApps]);
-
-  const visibleApps = [...initialApps, ...communityApps];
+  }, [fallbackLocalApps]);
 
   return (
     <>
@@ -56,7 +78,7 @@ export default function ProjectGrid({ initialApps }) {
         routePath="/"
       />
 
-      <section className="project-grid" aria-label="Projektübersicht">
+      <section className="project-grid" aria-label="Projektuebersicht">
         {visibleApps.map((app) => (
           <StorePreview key={app.id} app={app} />
         ))}

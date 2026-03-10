@@ -1,18 +1,24 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import InteractionTracker from "../../../components/InteractionTracker";
+import ProjectContentSections from "../../../components/ProjectContentSections";
 import TrackedExternalLink from "../../../components/TrackedExternalLink";
-import { APPS, getAppById } from "../../../lib/apps";
 import { withBasePath } from "../../../lib/basePath";
 import { DEFAULT_EXTERNAL_BUTTON_LABEL } from "../../../lib/project-content";
+import { fetchServerPublicAppBySlug, fetchServerPublicApps } from "../../../lib/public-apps-server";
 
-export function generateStaticParams() {
-  return APPS.map((app) => ({ id: app.id }));
+export async function generateStaticParams() {
+  const apps = await fetchServerPublicApps();
+  return apps.map((app) => ({ id: app.runtimeId || app.id }));
 }
 
-export default function AppDetailPage({ params }) {
-  const app = getAppById(params?.id);
-  if (!app) notFound();
+export default async function AppDetailPage({ params }) {
+  const app = await fetchServerPublicAppBySlug(params?.id);
+
+  if (!app) {
+    notFound();
+  }
+
   const externalButtonLabel = app.externalButtonLabel || DEFAULT_EXTERNAL_BUTTON_LABEL;
 
   return (
@@ -22,7 +28,7 @@ export default function AppDetailPage({ params }) {
         itemTitle={app.title}
         itemSource={app.itemSource || "local"}
         eventType="detail_view"
-        routePath={`/app/${app.id}`}
+        routePath={`/app/${app.runtimeId || app.id}`}
       />
 
       <div>
@@ -48,69 +54,33 @@ export default function AppDetailPage({ params }) {
             {externalButtonLabel}
           </TrackedExternalLink>
         ) : null}
+
+        {app.creatorSlug ? (
+          <Link href={`/creator/${app.creatorSlug}`} className="button button-secondary detail-inline-btn">
+            Creator-Profil ansehen
+          </Link>
+        ) : null}
       </div>
 
       <div>
         <h1 style={{ marginTop: 0 }}>{app.title}</h1>
-
-        {app.detailBodyImage ? (
-          <img
-            src={withBasePath(app.detailBodyImage)}
-            alt={app.detailBodyImageAlt || `${app.title} Vorschau`}
-            className="detail-body-image"
-          />
-        ) : null}
-
         {app.longDescription ? <p className="detail-text">{app.longDescription}</p> : null}
 
-        {(app.features || []).length ? (
-          <>
-            <h2>Hauptfunktionen</h2>
-            <ul className="detail-list">
-              {(app.features || []).map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </>
-        ) : null}
+        <ProjectContentSections title={app.title} sections={app.contentSections} />
 
-        {(app.commands || []).length ? (
-          <>
-            <h2>Wichtige Befehle</h2>
-            <ul className="detail-list">
-              {(app.commands || []).map((cmd) => (
-                <li key={cmd.signature}>
-                  <strong>{cmd.signature}</strong> - {cmd.desc}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-
-        {(app.cardsPreview || []).length ? (
-          <>
-            <h2>Beispielkarten</h2>
-            <ul className="detail-list">
-              {(app.cardsPreview || []).map((card) => (
-                <li key={card}>{card}</li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-
-        {(app.dbTables || []).length ? (
-          <>
-            <h2>Datenbank-Tabellen</h2>
-            <ul className="detail-list">
-              {(app.dbTables || []).map((tableName) => (
-                <li key={tableName}>{tableName}</li>
-              ))}
-            </ul>
-          </>
+        {app.creatorDisplayName ? (
+          <p className="detail-text">
+            Creator:{" "}
+            {app.creatorSlug ? (
+              <Link href={`/creator/${app.creatorSlug}`}>{app.creatorDisplayName}</Link>
+            ) : (
+              app.creatorDisplayName
+            )}
+          </p>
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zurück zur Übersicht
+          Zurueck zur Uebersicht
         </Link>
       </div>
     </article>
