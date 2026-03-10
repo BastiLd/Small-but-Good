@@ -20,13 +20,25 @@ const initialForm = {
   description: ""
 };
 
+function getMailImageValue(imageUrl) {
+  if (!imageUrl) {
+    return "-";
+  }
+
+  if (/^data:image\//i.test(imageUrl)) {
+    return "[lokal hochgeladenes Bild - bitte mit Supabase oder Account senden]";
+  }
+
+  return imageUrl;
+}
+
 function buildMailtoBody(form) {
   return [
     `Name: ${form.creatorName}`,
     `E-Mail: ${form.email}`,
     `Projektname: ${form.projectName}`,
     `Website oder Kanal: ${form.website || "-"}`,
-    `Vorschaubild-URL: ${form.imageUrl || "-"}`,
+    `Titelbild: ${getMailImageValue(form.imageUrl)}`,
     "",
     "Beschreibung:",
     form.description
@@ -50,6 +62,56 @@ function getDraftFromStorage() {
   }
 }
 
+function loadFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(new Error("Die Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Das Bild konnte nicht verarbeitet werden."));
+    image.src = src;
+  });
+}
+
+async function optimizeImageFile(file) {
+  const dataUrl = await loadFileAsDataUrl(file);
+
+  if (file.type === "image/svg+xml" || dataUrl.length <= 1_400_000) {
+    return dataUrl;
+  }
+
+  const image = await loadImageElement(dataUrl);
+  const maxDimension = 1600;
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height)
+  );
+  const canvas = document.createElement("canvas");
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return dataUrl;
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+  const targetType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const optimized = canvas.toDataURL(targetType, targetType === "image/png" ? undefined : 0.84);
+
+  return optimized.length < dataUrl.length ? optimized : dataUrl;
+}
+
 export default function SubmitProjectForm() {
   const router = useRouter();
   const [form, setForm] = useState(initialForm);
@@ -63,7 +125,7 @@ export default function SubmitProjectForm() {
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
 
   const previewImage = useMemo(
-    () => form.imageUrl.trim() || withBasePath("/images/project-placeholder.svg"),
+    () => withBasePath(form.imageUrl.trim() || "/images/project-placeholder.svg"),
     [form.imageUrl]
   );
   const previewWebsite = useMemo(() => form.website.trim(), [form.website]);
@@ -100,7 +162,15 @@ export default function SubmitProjectForm() {
       return;
     }
 
-    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
+    try {
+      const nextDraft =
+        /^data:image\//i.test(form.imageUrl) && form.imageUrl.length > 160_000
+          ? { ...form, imageUrl: "" }
+          : form;
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
+    } catch {
+      // Ignore local storage quota issues for large client-side image uploads.
+    }
   }, [form, hasLoadedDraft]);
 
   useEffect(() => {
@@ -204,6 +274,30 @@ export default function SubmitProjectForm() {
     }
   }
 
+  async function handleImageSelection(file) {
+    if (!file) {
+      return;
+    }
+
+    try {
+      const dataUrl = await optimizeImageFile(file);
+
+      if (dataUrl.length > 3_000_000) {
+        throw new Error(
+          "Das Bild ist nach dem Verkleinern noch zu groß. Bitte nimm eine kleinere Datei."
+        );
+      }
+
+      setForm((current) => ({ ...current, imageUrl: dataUrl }));
+      setStatus(null);
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error?.message || "Das Bild konnte nicht verarbeitet werden."
+      });
+    }
+  }
+
   function openEmail() {
     if (!validateForm()) {
       return;
@@ -214,7 +308,9 @@ export default function SubmitProjectForm() {
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     setStatus({
       type: "success",
-      message: "Dein E-Mail-Programm wurde mit den eingetragenen Daten geöffnet."
+      message: /^data:image\//i.test(form.imageUrl)
+        ? "Dein E-Mail-Programm wurde geöffnet. Für hochgeladene Bilder nutze bitte am besten \"Mit Supabase senden\" oder \"Mit Account\"."
+        : "Dein E-Mail-Programm wurde mit den eingetragenen Daten geöffnet."
     });
   }
 
@@ -404,15 +500,44 @@ export default function SubmitProjectForm() {
             </label>
 
             <label className="field">
-              <span className="field-label">Vorschaubild-URL (optional)</span>
+              <span className="field-label">Titelbild-URL (optional)</span>
               <input
                 className="input"
                 name="imageUrl"
                 value={form.imageUrl}
                 onChange={updateField}
-                placeholder="https://.../bild.png"
+                placeholder="https://.../bild.png oder Imgur-Link"
               />
             </label>
+            <p className="submit-image-note">
+              Du kannst hier einen direkten Link einfügen, zum Beispiel von Imgur, oder direkt ein
+              Bild hochladen.
+            </p>
+
+            <div className="submit-image-tools">
+              <label className="button button-secondary">
+                Titelbild hochladen
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    await handleImageSelection(file);
+                    event.target.value = "";
+                  }}
+                />
+              </label>
+              {form.imageUrl ? (
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setForm((current) => ({ ...current, imageUrl: "" }))}
+                >
+                  Titelbild entfernen
+                </button>
+              ) : null}
+            </div>
 
             <label className="field">
               <span className="field-label">Beschreibung</span>

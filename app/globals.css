@@ -312,6 +312,20 @@ a {
   margin-top: 0.95rem;
 }
 
+.submit-image-note {
+  margin: 0.55rem 0 0;
+  color: #5a4930;
+  line-height: 1.5;
+}
+
+.submit-image-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
 .submit-duplicate-note {
   margin: 0.9rem 0 0;
   color: #5a4930;
