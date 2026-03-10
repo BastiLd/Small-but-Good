@@ -487,11 +487,12 @@ values (
   'bastian.klaus2010@gmail.com',
   'Bastian Klaus',
   'bastian-klaus',
-  'Creator hinter CuratedHub.'
+  'Creator von CuratedHub.'
 )
 on conflict (email) do update
-set slug = coalesce(creators.slug, excluded.slug),
-    bio = coalesce(creators.bio, excluded.bio);
+set display_name = excluded.display_name,
+    slug = excluded.slug,
+    bio = excluded.bio;
 
 insert into apps (
   slug,

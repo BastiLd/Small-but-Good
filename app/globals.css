@@ -954,6 +954,16 @@ a {
   display: inline-block;
 }
 
+.creator-profile-link {
+  color: #e3a422;
+  font-weight: 700;
+}
+
+.creator-profile-link:hover,
+.creator-profile-link:focus-visible {
+  color: #cf951a;
+}
+
 .detail-body-image {
   width: 100%;
   max-width: 640px;
