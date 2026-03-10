@@ -60,7 +60,7 @@ export default function ProjectContentSections({ title, sections = [] }) {
                   >
                     <img src={imageSrc} alt={imageAlt} className={styles.image} />
                   </button>
-                  <span className={styles.caption}>Antippen oder klicken zum VergrÃ¶ÃŸern</span>
+                  <span className={styles.caption}>Antippen oder klicken zum Vergrößern</span>
                 </div>
               ) : null}
             </section>
@@ -75,7 +75,7 @@ export default function ProjectContentSections({ title, sections = [] }) {
               type="button"
               className={styles.lightboxClose}
               onClick={() => setExpandedImage(null)}
-              aria-label="Bild schlieÃŸen"
+              aria-label="Bild schließen"
             >
               ×
             </button>

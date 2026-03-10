@@ -45,75 +45,85 @@ const AppIntroOverlay = forwardRef(function AppIntroOverlay(
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   };
 
-  const close = useCallback((shouldRoute) => {
-    const targetPath = payload?.detailPath || null;
+  const close = useCallback(
+    (shouldRoute) => {
+      const targetPath = payload?.detailPath || null;
 
-    setContentVisible(true);
-    setFadeActive(false);
-
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-    }
-    if (contentTimerRef.current) {
-      clearTimeout(contentTimerRef.current);
-    }
-
-    const reduceMotion = getReducedMotion();
-    closeTimerRef.current = setTimeout(() => {
-      setMounted(false);
-
-      if (shouldRoute && targetPath) {
-        try {
-          router.push(targetPath);
-        } catch {
-          window.location.href = withBasePath(targetPath);
-        }
-      }
-    }, reduceMotion ? 0 : 420);
-  }, [payload, router]);
-
-  const open = useCallback((nextPayload) => {
-    const merged = {
-      appId: nextPayload?.appId || appId,
-      imagePublicPath: nextPayload?.imagePublicPath || imagePublicPath,
-      introText: nextPayload?.introText || introText,
-      detailPath:
-        typeof nextPayload?.detailPath !== "undefined" ? nextPayload.detailPath : detailPath
-    };
-
-    if (!merged.appId) return;
-
-    setPayload(merged);
-    setMounted(true);
-    setContentVisible(false);
-
-    if (contentTimerRef.current) {
-      clearTimeout(contentTimerRef.current);
-    }
-
-    if (typeof window !== "undefined") {
-      window.requestAnimationFrame(() => {
-        setFadeActive(true);
-
-        if (getReducedMotion()) {
-          setContentVisible(true);
-          return;
-        }
-
-        contentTimerRef.current = setTimeout(() => {
-          setContentVisible(true);
-        }, CONTENT_REVEAL_DELAY_MS);
-      });
-    } else {
-      setFadeActive(true);
       setContentVisible(true);
-    }
-  }, [appId, detailPath, imagePublicPath, introText]);
+      setFadeActive(false);
 
-  useImperativeHandle(ref, () => ({
-    open,
-    close: () => close(false)
-  }), [open, close]);
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+      if (contentTimerRef.current) {
+        clearTimeout(contentTimerRef.current);
+      }
+
+      const reduceMotion = getReducedMotion();
+      closeTimerRef.current = setTimeout(() => {
+        setMounted(false);
+
+        if (shouldRoute && targetPath) {
+          try {
+            router.push(targetPath);
+          } catch {
+            window.location.href = withBasePath(targetPath);
+          }
+        }
+      }, reduceMotion ? 0 : 420);
+    },
+    [payload, router]
+  );
+
+  const open = useCallback(
+    (nextPayload) => {
+      const merged = {
+        appId: nextPayload?.appId || appId,
+        imagePublicPath: nextPayload?.imagePublicPath || imagePublicPath,
+        introText: nextPayload?.introText || introText,
+        detailPath:
+          typeof nextPayload?.detailPath !== "undefined" ? nextPayload.detailPath : detailPath
+      };
+
+      if (!merged.appId) return;
+
+      setPayload(merged);
+      setMounted(true);
+      setContentVisible(false);
+
+      if (contentTimerRef.current) {
+        clearTimeout(contentTimerRef.current);
+      }
+
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          setFadeActive(true);
+
+          if (getReducedMotion()) {
+            setContentVisible(true);
+            return;
+          }
+
+          contentTimerRef.current = setTimeout(() => {
+            setContentVisible(true);
+          }, CONTENT_REVEAL_DELAY_MS);
+        });
+      } else {
+        setFadeActive(true);
+        setContentVisible(true);
+      }
+    },
+    [appId, detailPath, imagePublicPath, introText]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      open,
+      close: () => close(false)
+    }),
+    [open, close]
+  );
 
   useEffect(() => {
     const onOpenEvent = (event) => {

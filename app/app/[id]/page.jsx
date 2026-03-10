@@ -80,7 +80,7 @@ export default async function AppDetailPage({ params }) {
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          Zurueck zur Uebersicht
+          Zurück zur Übersicht
         </Link>
       </div>
     </article>

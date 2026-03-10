@@ -419,7 +419,7 @@ export default function CreatorProjectEditorClient() {
 
       if (dataUrl.length > 3_000_000) {
         throw new Error(
-          "Das Bild ist nach dem Verkleinern noch zu gross. Bitte nimm eine kleinere Datei."
+          "Das Bild ist nach dem Verkleinern noch zu groß. Bitte nimm eine kleinere Datei."
         );
       }
 
@@ -575,9 +575,9 @@ export default function CreatorProjectEditorClient() {
       <section className="dashboard-stack">
         <article className="card">
           <h1>Projekt bearbeiten</h1>
-          <p>Es wurde keine Projekt-ID uebergeben.</p>
+          <p>Es wurde keine Projekt-ID übergeben.</p>
           <Link href="/creator/dashboard" className="button button-secondary">
-            Zurueck zum Dashboard
+            Zurück zum Dashboard
           </Link>
         </article>
       </section>
@@ -591,7 +591,7 @@ export default function CreatorProjectEditorClient() {
           <h1>Projekt bearbeiten</h1>
           <p>{status?.message || "Du darfst dieses Projekt nicht bearbeiten."}</p>
           <Link href="/creator/dashboard" className="button button-secondary">
-            Zurueck zum Dashboard
+            Zurück zum Dashboard
           </Link>
         </article>
       </section>
@@ -622,7 +622,7 @@ export default function CreatorProjectEditorClient() {
         <article className={`card ${styles.editorFormCard}`}>
           <div className="button-row" style={{ marginTop: 0 }}>
             <Link href="/creator/dashboard" className="button button-secondary">
-              Zurueck zum Dashboard
+              Zurück zum Dashboard
             </Link>
             {detailHref ? (
               <Link href={detailHref} className="button button-secondary">
@@ -636,8 +636,8 @@ export default function CreatorProjectEditorClient() {
               <strong>Hinweis zur Datenbank</strong>
               <p>
                 Die neuen Editor-Felder wurden in Supabase noch nicht gefunden. Bitte wende zuerst
-                die SQL-Aenderungen aus `supabase/schema.sql` an, damit Abschnittsbilder und der
-                Button-Name gespeichert werden koennen.
+                die SQL-Änderungen aus `supabase/schema.sql` an, damit Abschnittsbilder und der
+                Button-Name gespeichert werden können.
               </p>
             </div>
           ) : null}
@@ -660,18 +660,18 @@ export default function CreatorProjectEditorClient() {
               name="description"
               value={form.description}
               onChange={updateField}
-              placeholder="Kurzer Text fuer Karte und Detailseite"
+              placeholder="Kurzer Text für Karte und Detailseite"
             />
           </label>
 
           <label className="field" style={{ marginTop: 0 }}>
-            <span className="field-label">Intro-Text fuer die Mehr-Infos-Blende</span>
+            <span className="field-label">Intro-Text für die Mehr-Infos-Blende</span>
             <textarea
               className="textarea"
               name="introText"
               value={form.introText}
               onChange={updateField}
-              placeholder="Optionaler Text fuer die Blende"
+              placeholder="Optionaler Text für die Blende"
             />
           </label>
 
@@ -713,7 +713,7 @@ export default function CreatorProjectEditorClient() {
           ) : null}
 
           <label className="field" style={{ marginTop: 0 }}>
-            <span className="field-label">Button-Name fuer den externen Link</span>
+            <span className="field-label">Button-Name für den externen Link</span>
             <input
               className="input"
               name="externalButtonLabel"
@@ -723,7 +723,7 @@ export default function CreatorProjectEditorClient() {
             />
           </label>
           <p className={styles.muted}>
-            Laesst du das Feld leer, bleibt standardmaessig "{DEFAULT_EXTERNAL_BUTTON_LABEL}" stehen.
+            Lässt du das Feld leer, bleibt standardmäßig "{DEFAULT_EXTERNAL_BUTTON_LABEL}" stehen.
           </p>
 
           <label className="field" style={{ marginTop: 0 }}>
@@ -772,7 +772,7 @@ export default function CreatorProjectEditorClient() {
               </p>
             </div>
             <button type="button" className="button" onClick={addSection}>
-              Abschnitt hinzufuegen
+              Abschnitt hinzufügen
             </button>
           </div>
 
@@ -787,12 +787,12 @@ export default function CreatorProjectEditorClient() {
                       className="button button-secondary"
                       onClick={() => removeSection(section.id)}
                     >
-                      Abschnitt loeschen
+                      Abschnitt löschen
                     </button>
                   </div>
 
                   <label className="field" style={{ marginTop: 0 }}>
-                    <span className="field-label">Ueberschrift</span>
+                    <span className="field-label">Überschrift</span>
                     <input
                       className="input"
                       value={section.heading}
@@ -811,7 +811,7 @@ export default function CreatorProjectEditorClient() {
                       onChange={(event) =>
                         updateSection(section.id, { text: event.target.value })
                       }
-                      placeholder="Hier kann Text hinzugefuegt, ersetzt oder geloescht werden."
+                      placeholder="Hier kann Text hinzugefügt, ersetzt oder gelöscht werden."
                     />
                   </label>
 
@@ -880,15 +880,15 @@ export default function CreatorProjectEditorClient() {
             <div className={styles.emptySections}>
               <strong>Noch keine Abschnitte</strong>
               <p>
-                Fuege Abschnitte hinzu, damit rechts neben dem Text kleine Bilder erscheinen und
-                sich per Klick gross oeffnen lassen.
+                Füge Abschnitte hinzu, damit rechts neben dem Text kleine Bilder erscheinen und
+                sich per Klick groß öffnen lassen.
               </p>
             </div>
           )}
 
           <div className="button-row">
             <button type="button" className="button button-edit" disabled={isSaving} onClick={saveProject}>
-              {isSaving ? "Speichert..." : "Aenderungen speichern"}
+              {isSaving ? "Speichert..." : "Änderungen speichern"}
             </button>
           </div>
 
@@ -910,7 +910,7 @@ export default function CreatorProjectEditorClient() {
               {form.projectName.trim() || "Projektname"}
             </h2>
             <p className={styles.muted}>
-              So wirkt die oeffentliche Detailseite nach dem Speichern.
+              So wirkt die öffentliche Detailseite nach dem Speichern.
             </p>
           </div>
 

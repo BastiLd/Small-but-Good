@@ -93,7 +93,10 @@ export default function PublicProjectDetailPage({ project: initialProject }) {
         ) : null}
 
         {project.creatorSlug ? (
-          <Link href={`/creator/${project.creatorSlug}`} className="button button-secondary detail-inline-btn">
+          <Link
+            href={`/creator/${project.creatorSlug}`}
+            className="button button-secondary detail-inline-btn"
+          >
             Creator-Profil ansehen
           </Link>
         ) : null}
@@ -106,7 +109,7 @@ export default function PublicProjectDetailPage({ project: initialProject }) {
         <ProjectContentSections title={project.title} sections={project.contentSections} />
 
         <p className="detail-text">
-          Dieses Community-Projekt wurde Ã¼ber CuratedHub eingereicht und freigegeben.
+          Dieses Community-Projekt wurde über CuratedHub eingereicht und freigegeben.
         </p>
 
         {project.creatorDisplayName ? (
@@ -121,7 +124,7 @@ export default function PublicProjectDetailPage({ project: initialProject }) {
         ) : null}
 
         <Link href="/" className="button detail-inline-btn">
-          ZurÃ¼ck zur Ãœbersicht
+          Zurück zur Übersicht
         </Link>
       </div>
     </article>

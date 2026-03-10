@@ -67,7 +67,7 @@ export default function PublicCreatorProfilePage({ creator, projects: initialPro
         </p>
         <p className="detail-text">Freigegebene Projekte: {projects.length}</p>
         <Link href="/" className="button detail-inline-btn">
-          ZurÃ¼ck zur Ãœbersicht
+          Zurück zur Übersicht
         </Link>
       </article>
 
