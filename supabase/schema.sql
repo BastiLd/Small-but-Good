@@ -150,6 +150,7 @@ create index if not exists idx_interaction_events_type_created_at
 create index if not exists idx_interaction_events_actor_email
   on interaction_events(actor_email);
 
+drop view if exists public_feed_projects;
 drop view if exists public_projects;
 create view public_projects as
 select
@@ -200,7 +201,6 @@ from apps a
 left join creators c on c.id = a.creator_id
 where a.status = 'published';
 
-drop view if exists public_feed_projects;
 create view public_feed_projects as
 select
   'app'::text as source,
