@@ -124,6 +124,7 @@ export default function CreatorDashboardClient() {
   const [projectManagementSearch, setProjectManagementSearch] = useState("");
   const [selectedManagedProjectId, setSelectedManagedProjectId] = useState(null);
   const [projectActionDialog, setProjectActionDialog] = useState(null);
+  const [editorPickerOpen, setEditorPickerOpen] = useState(false);
   const [status, setStatus] = useState(null);
   const [activeRangeKey, setActiveRangeKey] = useState("all");
   const [dashboardData, setDashboardData] = useState(null);
@@ -551,6 +552,7 @@ export default function CreatorDashboardClient() {
     setProjectManagementMode(nextMode);
     setProjectManagementSearch("");
     setProjectActionDialog(null);
+    setEditorPickerOpen(false);
   }
 
   function openProjectActionDialog(mode) {
@@ -1039,18 +1041,14 @@ export default function CreatorDashboardClient() {
                   >
                     Wiederherstellen
                   </button>
-                  {selectedManagedProject ? (
-                    <Link
-                      href={`/creator/dashboard/editor?id=${selectedManagedProject.id}`}
-                      className="button button-edit"
-                    >
-                      Bearbeiten
-                    </Link>
-                  ) : (
-                    <button type="button" className="button button-edit" disabled>
-                      Bearbeiten
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="dashboard-range-chip dashboard-range-chip-edit"
+                    disabled={!manageableProjects.length}
+                    onClick={() => setEditorPickerOpen(true)}
+                  >
+                    Bearbeiten
+                  </button>
                 </div>
               </div>
 
@@ -1164,12 +1162,6 @@ export default function CreatorDashboardClient() {
                             Projektseite öffnen
                           </Link>
                         ) : null}
-                        <Link
-                          href={`/creator/dashboard/editor?id=${selectedManagedProject.id}`}
-                          className="button button-edit"
-                        >
-                          Bearbeiten
-                        </Link>
                         <button
                           type="button"
                           className={`button ${
@@ -1276,6 +1268,49 @@ export default function CreatorDashboardClient() {
             </label>
           </div>
         ) : null}
+      </TextPromptOverlay>
+
+      <TextPromptOverlay
+        open={editorPickerOpen}
+        onClose={() => setEditorPickerOpen(false)}
+        hideConfirmButton
+        secondaryLabel="Schließen"
+        onSecondaryAction={() => setEditorPickerOpen(false)}
+        transparentBackdrop
+        warmSurface
+        title="Projekt zum Bearbeiten wählen"
+      >
+        <div className="editor-picker-dialog">
+          <p className="queue-info-line">
+            Wähle ein freigegebenes Projekt aus. Die Suche links im Dashboard wirkt auch hier.
+          </p>
+
+          {filteredManageableProjects.length ? (
+            <div className="editor-picker-list">
+              {filteredManageableProjects.map((project) => (
+                <Link
+                  key={`editor-${project.id}`}
+                  href={`/creator/dashboard/editor?id=${project.id}`}
+                  className={`management-project-button ${
+                    selectedManagedProject?.id === project.id
+                      ? "management-project-button-active"
+                      : ""
+                  }`.trim()}
+                  onClick={() => setEditorPickerOpen(false)}
+                >
+                  <strong>{project.project_name}</strong>
+                  <span>{project.creator_name || "Ohne Namen"}</span>
+                  <small>{project.website_url || project.public_slug || "Ohne Link"}</small>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="management-empty-state">
+              <strong>Keine Projekte zum Bearbeiten gefunden.</strong>
+              <p>Prüfe die Suche oder wechsle zwischen Löschen und Wiederherstellen.</p>
+            </div>
+          )}
+        </div>
       </TextPromptOverlay>
 
       <TextPromptOverlay

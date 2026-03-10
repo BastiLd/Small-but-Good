@@ -469,6 +469,18 @@ a {
   border-color: var(--hero-c);
 }
 
+.dashboard-range-chip-edit {
+  background: #56db83;
+  color: #173524;
+  border-color: #56db83;
+}
+
+.dashboard-range-chip-edit:hover,
+.dashboard-range-chip-edit:focus-visible {
+  background: #46c771;
+  border-color: #46c771;
+}
+
 .dashboard-range-note {
   margin: 0.85rem 0 0;
   color: #5a4930;
@@ -718,6 +730,19 @@ a {
   gap: 0.7rem;
   margin-top: 1rem;
   max-height: 520px;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.editor-picker-dialog {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.editor-picker-list {
+  display: grid;
+  gap: 0.7rem;
+  max-height: 420px;
   overflow: auto;
   padding-right: 0.2rem;
 }
