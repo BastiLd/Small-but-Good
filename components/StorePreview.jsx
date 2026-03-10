@@ -33,18 +33,6 @@ export default function StorePreview({ app }) {
   const mainShot = screenshots[0] || "/images/project-placeholder.svg";
   const resolvedMainShot = withBasePath(mainShot);
   const imageScale = normalizeCardImageScale(app.cardImageScale);
-  const isDiscordBot = type === "discord_bot";
-  const isPrivate = app.isPrivate || app.private || app.visibility === "private";
-
-  const contactLabel = app.creatorHandle || "@creator";
-  const contactHref =
-    app.contact_url ||
-    (app.creator_email ? `mailto:${app.creator_email}` : "https://discord.com");
-
-  const previewCommands =
-    app.commands?.slice(0, 4).map((cmd) => cmd.signature || cmd.name) ||
-    ["/kampf", "/mission", "/geschichte", "/sammlung"];
-
   const detailRoute =
     typeof detailPath !== "undefined" ? detailPath : itemSource === "local" ? `/app/${id}` : null;
   const externalButtonLabel = app.externalButtonLabel || DEFAULT_EXTERNAL_BUTTON_LABEL;
@@ -134,28 +122,6 @@ export default function StorePreview({ app }) {
           <span className={styles.tag}>{platformLabel || platform || "Web"}</span>
           <span className={styles.tag}>{typeLabel || type || "Projekt"}</span>
         </div>
-
-        {isDiscordBot ? (
-          <section className={styles.commandsPanel} aria-label="Discord-Bot-Befehle">
-            <h4 className={styles.commandsTitle}>Beispiel-Befehle</h4>
-            <ul className={styles.commandsList}>
-              {previewCommands.map((command) => (
-                <li key={command}>{command}</li>
-              ))}
-            </ul>
-            {isPrivate ? (
-              <a
-                href={contactHref}
-                className={`${styles.button} ${styles.secondaryButton} ${styles.contactButton}`}
-                aria-label={`Kontakt aufnehmen mit ${contactLabel}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Kontakt: {contactLabel}
-              </a>
-            ) : null}
-          </section>
-        ) : null}
 
         <div className={styles.actions}>
           <button
