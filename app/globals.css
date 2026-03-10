@@ -739,6 +739,22 @@ a {
   gap: 0.9rem;
 }
 
+.editor-picker-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.editor-picker-group {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.editor-picker-heading {
+  color: #463622;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
 .editor-picker-list {
   display: grid;
   gap: 0.7rem;

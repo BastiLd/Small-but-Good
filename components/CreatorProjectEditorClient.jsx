@@ -11,12 +11,13 @@ import {
   resolveExternalButtonLabel,
   serializeProjectSections
 } from "../lib/project-content";
+import { slugify } from "../lib/project-utils";
 import { browserSupabase } from "../lib/supabase-browser";
 import ProjectContentSections from "./ProjectContentSections";
 import styles from "./CreatorProjectEditorClient.module.css";
 
 const PLACEHOLDER_IMAGE = "/images/project-placeholder.svg";
-const editorSelect = [
+const submissionEditorSelect = [
   "id",
   "creator_name",
   "email",
@@ -33,7 +34,7 @@ const editorSelect = [
   "external_button_label",
   "detail_sections"
 ].join(", ");
-const fallbackEditorSelect = [
+const submissionFallbackEditorSelect = [
   "id",
   "creator_name",
   "email",
@@ -48,8 +49,61 @@ const fallbackEditorSelect = [
   "deleted_at",
   "restore_until"
 ].join(", ");
+const appEditorSelect = [
+  "id",
+  "slug",
+  "name",
+  "short_description",
+  "long_description",
+  "intro_text",
+  "website_url",
+  "card_image_url",
+  "detail_sections",
+  "external_button_label",
+  "platform",
+  "platform_label",
+  "type",
+  "type_label",
+  "status",
+  "feed_order",
+  "created_at",
+  "creators!apps_creator_id_fkey(display_name, slug, email)"
+].join(", ");
+const appFallbackEditorSelect = [
+  "id",
+  "slug",
+  "name",
+  "short_description",
+  "long_description",
+  "website_url",
+  "status",
+  "created_at",
+  "creators!apps_creator_id_fkey(display_name, slug, email)"
+].join(", ");
 
-function buildFormState(row) {
+function normalizeSource(rawValue) {
+  return rawValue === "app" ? "app" : "submission";
+}
+
+function buildFormState(row, source) {
+  if (source === "app") {
+    return {
+      projectName: row?.name || "",
+      websiteUrl: row?.website_url || "",
+      description: row?.short_description || row?.long_description || "",
+      introText: row?.intro_text || "",
+      cardImageUrl: row?.card_image_url || "",
+      externalButtonLabel: row?.external_button_label || "",
+      sections: normalizeProjectSections(row?.detail_sections),
+      platformLabel: row?.platform_label || row?.platform || "App",
+      typeLabel: row?.type_label || row?.type || "Projekt",
+      platformValue: row?.platform || "",
+      typeValue: row?.type || "",
+      detailSlug: row?.slug || "",
+      creatorName: row?.creators?.display_name || row?.creators?.email || "CuratedHub"
+    };
+  }
+
   return {
     projectName: row?.project_name || "",
     websiteUrl: row?.website_url || "",
@@ -57,7 +111,13 @@ function buildFormState(row) {
     introText: row?.approved_intro_text || "",
     cardImageUrl: row?.card_image_url || "",
     externalButtonLabel: row?.external_button_label || "",
-    sections: normalizeProjectSections(row?.detail_sections)
+    sections: normalizeProjectSections(row?.detail_sections),
+    platformLabel: "Community",
+    typeLabel: "Freigegeben",
+    platformValue: "community",
+    typeValue: "submitted_project",
+    detailSlug: row?.public_slug || "",
+    creatorName: row?.creator_name || row?.email || "Creator"
   };
 }
 
@@ -113,6 +173,7 @@ async function optimizeImageFile(file) {
 
 export default function CreatorProjectEditorClient() {
   const [projectId, setProjectId] = useState("");
+  const [projectSource, setProjectSource] = useState("submission");
   const [session, setSession] = useState(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -124,7 +185,13 @@ export default function CreatorProjectEditorClient() {
     introText: "",
     cardImageUrl: "",
     externalButtonLabel: "",
-    sections: []
+    sections: [],
+    platformLabel: "Community",
+    typeLabel: "Freigegeben",
+    platformValue: "community",
+    typeValue: "submitted_project",
+    detailSlug: "",
+    creatorName: ""
   }));
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -135,6 +202,14 @@ export default function CreatorProjectEditorClient() {
   const previewSections = useMemo(() => serializeProjectSections(form.sections), [form.sections]);
   const previewImage = withBasePath(form.cardImageUrl.trim() || PLACEHOLDER_IMAGE);
   const externalButtonLabel = resolveExternalButtonLabel(form.externalButtonLabel);
+  const detailHref =
+    projectSource === "app"
+      ? form.detailSlug
+        ? `/app/${form.detailSlug}`
+        : null
+      : form.detailSlug
+        ? `/projekte/${form.detailSlug}`
+        : null;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -143,6 +218,7 @@ export default function CreatorProjectEditorClient() {
 
     const params = new URLSearchParams(window.location.search);
     setProjectId(params.get("id") || "");
+    setProjectSource(normalizeSource(params.get("source")));
   }, []);
 
   useEffect(() => {
@@ -220,9 +296,49 @@ export default function CreatorProjectEditorClient() {
     async function loadProject() {
       setIsLoading(true);
 
+      if (projectSource === "app") {
+        let response = await browserSupabase
+          .from("apps")
+          .select(appEditorSelect)
+          .eq("id", projectId)
+          .maybeSingle();
+        let usesFallback = false;
+
+        if (response.error && isEditorColumnMissingError(response.error)) {
+          usesFallback = true;
+          response = await browserSupabase
+            .from("apps")
+            .select(appFallbackEditorSelect)
+            .eq("id", projectId)
+            .maybeSingle();
+        }
+
+        if (!active) {
+          return;
+        }
+
+        if (response.error || !response.data) {
+          setProject(null);
+          setStatus({
+            type: "error",
+            message: response.error?.message || "App-Projekt nicht gefunden oder keine Berechtigung."
+          });
+          setSchemaWarning(usesFallback);
+          setIsLoading(false);
+          return;
+        }
+
+        setProject(response.data);
+        setForm(buildFormState(response.data, "app"));
+        setSchemaWarning(usesFallback);
+        setStatus(null);
+        setIsLoading(false);
+        return;
+      }
+
       let response = await browserSupabase
         .from("submission_requests")
-        .select(editorSelect)
+        .select(submissionEditorSelect)
         .eq("id", projectId)
         .maybeSingle();
       let usesFallback = false;
@@ -231,7 +347,7 @@ export default function CreatorProjectEditorClient() {
         usesFallback = true;
         response = await browserSupabase
           .from("submission_requests")
-          .select(fallbackEditorSelect)
+          .select(submissionFallbackEditorSelect)
           .eq("id", projectId)
           .maybeSingle();
       }
@@ -252,7 +368,7 @@ export default function CreatorProjectEditorClient() {
       }
 
       setProject(response.data);
-      setForm(buildFormState(response.data));
+      setForm(buildFormState(response.data, "submission"));
       setSchemaWarning(usesFallback);
       setStatus(null);
       setIsLoading(false);
@@ -263,7 +379,7 @@ export default function CreatorProjectEditorClient() {
     return () => {
       active = false;
     };
-  }, [isAuthReady, projectId, session]);
+  }, [isAuthReady, projectId, projectSource, session]);
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -303,7 +419,7 @@ export default function CreatorProjectEditorClient() {
 
       if (dataUrl.length > 3_000_000) {
         throw new Error(
-          "Das Bild ist nach dem Verkleinern noch zu groÃŸ. Bitte nimm eine kleinere Datei."
+          "Das Bild ist nach dem Verkleinern noch zu gross. Bitte nimm eine kleinere Datei."
         );
       }
 
@@ -333,6 +449,53 @@ export default function CreatorProjectEditorClient() {
     setIsSaving(true);
     setStatus(null);
 
+    if (projectSource === "app") {
+      const payload = {
+        name: form.projectName.trim(),
+        short_description: form.description.trim(),
+        long_description: form.description.trim(),
+        intro_text: form.introText.trim() || null,
+        website_url: form.websiteUrl.trim() || null,
+        card_image_url: form.cardImageUrl.trim() || null,
+        external_button_label: form.externalButtonLabel.trim() || null,
+        detail_sections: previewSections,
+        platform_label: form.platformLabel.trim() || "App",
+        type_label: form.typeLabel.trim() || "Projekt",
+        platform: slugify(form.platformLabel) || form.platformValue || "app",
+        type: slugify(form.typeLabel) || form.typeValue || "project"
+      };
+
+      const { error } = await browserSupabase.from("apps").update(payload).eq("id", projectId);
+
+      if (error) {
+        setStatus({
+          type: "error",
+          message: isEditorColumnMissingError(error)
+            ? "Die neuen App-Editor-Felder fehlen noch in Supabase. Bitte zuerst `supabase/schema.sql` anwenden."
+            : error.message
+        });
+        if (isEditorColumnMissingError(error)) {
+          setSchemaWarning(true);
+        }
+        setIsSaving(false);
+        return;
+      }
+
+      setProject((current) => ({ ...(current || {}), ...payload }));
+      setForm((current) => ({
+        ...current,
+        sections: normalizeProjectSections(previewSections),
+        platformValue: payload.platform,
+        typeValue: payload.type
+      }));
+      setStatus({
+        type: "success",
+        message: "Das Projekt wurde gespeichert."
+      });
+      setIsSaving(false);
+      return;
+    }
+
     const payload = {
       project_name: form.projectName.trim(),
       website_url: form.websiteUrl.trim() || null,
@@ -359,14 +522,7 @@ export default function CreatorProjectEditorClient() {
       return;
     }
 
-    const nextProject = {
-      ...(project || {}),
-      ...payload,
-      detail_sections: previewSections,
-      external_button_label: payload.external_button_label
-    };
-
-    setProject(nextProject);
+    setProject((current) => ({ ...(current || {}), ...payload }));
     setForm((current) => ({
       ...current,
       sections: normalizeProjectSections(previewSections)
@@ -419,9 +575,9 @@ export default function CreatorProjectEditorClient() {
       <section className="dashboard-stack">
         <article className="card">
           <h1>Projekt bearbeiten</h1>
-          <p>Es wurde keine Projekt-ID Ã¼bergeben.</p>
+          <p>Es wurde keine Projekt-ID uebergeben.</p>
           <Link href="/creator/dashboard" className="button button-secondary">
-            ZurÃ¼ck zum Dashboard
+            Zurueck zum Dashboard
           </Link>
         </article>
       </section>
@@ -435,7 +591,7 @@ export default function CreatorProjectEditorClient() {
           <h1>Projekt bearbeiten</h1>
           <p>{status?.message || "Du darfst dieses Projekt nicht bearbeiten."}</p>
           <Link href="/creator/dashboard" className="button button-secondary">
-            ZurÃ¼ck zum Dashboard
+            Zurueck zum Dashboard
           </Link>
         </article>
       </section>
@@ -456,6 +612,7 @@ export default function CreatorProjectEditorClient() {
           <div className={styles.metaGrid}>
             <span className="status-pill">{project.status || "Projekt"}</span>
             {project.deleted_at ? <span className="status-pill">Ausgeblendet</span> : null}
+            {projectSource === "app" ? <span className="status-pill">Startseite</span> : null}
             {isAdmin ? <span className="status-pill">Admin</span> : null}
           </div>
         </div>
@@ -465,10 +622,10 @@ export default function CreatorProjectEditorClient() {
         <article className={`card ${styles.editorFormCard}`}>
           <div className="button-row" style={{ marginTop: 0 }}>
             <Link href="/creator/dashboard" className="button button-secondary">
-              ZurÃ¼ck zum Dashboard
+              Zurueck zum Dashboard
             </Link>
-            {project.public_slug ? (
-              <Link href={`/projekte/${project.public_slug}`} className="button button-secondary">
+            {detailHref ? (
+              <Link href={detailHref} className="button button-secondary">
                 Projektseite ansehen
               </Link>
             ) : null}
@@ -479,8 +636,8 @@ export default function CreatorProjectEditorClient() {
               <strong>Hinweis zur Datenbank</strong>
               <p>
                 Die neuen Editor-Felder wurden in Supabase noch nicht gefunden. Bitte wende zuerst
-                die SQL-Ã„nderungen aus `supabase/schema.sql` an, damit Abschnittsbilder und der
-                Button-Name gespeichert werden kÃ¶nnen.
+                die SQL-Aenderungen aus `supabase/schema.sql` an, damit Abschnittsbilder und der
+                Button-Name gespeichert werden koennen.
               </p>
             </div>
           ) : null}
@@ -503,18 +660,18 @@ export default function CreatorProjectEditorClient() {
               name="description"
               value={form.description}
               onChange={updateField}
-              placeholder="Kurzer Text fÃ¼r Karte und Detailseite"
+              placeholder="Kurzer Text fuer Karte und Detailseite"
             />
           </label>
 
           <label className="field" style={{ marginTop: 0 }}>
-            <span className="field-label">Intro-Text fÃ¼r die Mehr-Infos-Blende</span>
+            <span className="field-label">Intro-Text fuer die Mehr-Infos-Blende</span>
             <textarea
               className="textarea"
               name="introText"
               value={form.introText}
               onChange={updateField}
-              placeholder="Optionaler Text fÃ¼r die Blende"
+              placeholder="Optionaler Text fuer die Blende"
             />
           </label>
 
@@ -529,8 +686,34 @@ export default function CreatorProjectEditorClient() {
             />
           </label>
 
+          {projectSource === "app" ? (
+            <>
+              <label className="field" style={{ marginTop: 0 }}>
+                <span className="field-label">Plattform-Label</span>
+                <input
+                  className="input"
+                  name="platformLabel"
+                  value={form.platformLabel}
+                  onChange={updateField}
+                  placeholder="Discord, App, YouTube ..."
+                />
+              </label>
+
+              <label className="field" style={{ marginTop: 0 }}>
+                <span className="field-label">Typ-Label</span>
+                <input
+                  className="input"
+                  name="typeLabel"
+                  value={form.typeLabel}
+                  onChange={updateField}
+                  placeholder="Discord-Bot, Fan-App ..."
+                />
+              </label>
+            </>
+          ) : null}
+
           <label className="field" style={{ marginTop: 0 }}>
-            <span className="field-label">Button-Name fÃ¼r den externen Link</span>
+            <span className="field-label">Button-Name fuer den externen Link</span>
             <input
               className="input"
               name="externalButtonLabel"
@@ -540,7 +723,7 @@ export default function CreatorProjectEditorClient() {
             />
           </label>
           <p className={styles.muted}>
-            LÃ¤sst du das Feld leer, bleibt standardmÃ¤ÃŸig "{DEFAULT_EXTERNAL_BUTTON_LABEL}" stehen.
+            Laesst du das Feld leer, bleibt standardmaessig "{DEFAULT_EXTERNAL_BUTTON_LABEL}" stehen.
           </p>
 
           <label className="field" style={{ marginTop: 0 }}>
@@ -589,7 +772,7 @@ export default function CreatorProjectEditorClient() {
               </p>
             </div>
             <button type="button" className="button" onClick={addSection}>
-              Abschnitt hinzufÃ¼gen
+              Abschnitt hinzufuegen
             </button>
           </div>
 
@@ -604,12 +787,12 @@ export default function CreatorProjectEditorClient() {
                       className="button button-secondary"
                       onClick={() => removeSection(section.id)}
                     >
-                      Abschnitt lÃ¶schen
+                      Abschnitt loeschen
                     </button>
                   </div>
 
                   <label className="field" style={{ marginTop: 0 }}>
-                    <span className="field-label">Ãœberschrift</span>
+                    <span className="field-label">Ueberschrift</span>
                     <input
                       className="input"
                       value={section.heading}
@@ -628,7 +811,7 @@ export default function CreatorProjectEditorClient() {
                       onChange={(event) =>
                         updateSection(section.id, { text: event.target.value })
                       }
-                      placeholder="Hier kann Text hinzugefÃ¼gt, ersetzt oder gelÃ¶scht werden."
+                      placeholder="Hier kann Text hinzugefuegt, ersetzt oder geloescht werden."
                     />
                   </label>
 
@@ -697,15 +880,15 @@ export default function CreatorProjectEditorClient() {
             <div className={styles.emptySections}>
               <strong>Noch keine Abschnitte</strong>
               <p>
-                FÃ¼ge Abschnitte hinzu, damit rechts neben dem Text kleine Bilder erscheinen und
-                sich per Klick groÃŸ Ã¶ffnen lassen.
+                Fuege Abschnitte hinzu, damit rechts neben dem Text kleine Bilder erscheinen und
+                sich per Klick gross oeffnen lassen.
               </p>
             </div>
           )}
 
           <div className="button-row">
             <button type="button" className="button button-edit" disabled={isSaving} onClick={saveProject}>
-              {isSaving ? "Speichert..." : "Ã„nderungen speichern"}
+              {isSaving ? "Speichert..." : "Aenderungen speichern"}
             </button>
           </div>
 
@@ -727,7 +910,7 @@ export default function CreatorProjectEditorClient() {
               {form.projectName.trim() || "Projektname"}
             </h2>
             <p className={styles.muted}>
-              So wirkt die Ã¶ffentliche Detailseite nach dem Speichern.
+              So wirkt die oeffentliche Detailseite nach dem Speichern.
             </p>
           </div>
 
@@ -740,8 +923,8 @@ export default function CreatorProjectEditorClient() {
           </div>
 
           <div className="detail-chip-row" style={{ marginTop: 0 }}>
-            <span className="detail-chip">Community</span>
-            <span className="detail-chip">Freigegeben</span>
+            <span className="detail-chip">{form.platformLabel || "Community"}</span>
+            <span className="detail-chip">{form.typeLabel || "Freigegeben"}</span>
           </div>
 
           <p className="detail-text">{form.description.trim() || "Kurzbeschreibung des Projekts."}</p>

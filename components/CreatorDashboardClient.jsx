@@ -170,8 +170,10 @@ export default function CreatorDashboardClient() {
     (dashboardData?.ownApprovedSubmissions?.length || 0) + (dashboardData?.ownedLocalApps?.length || 0);
   const adminProjectManagement = dashboardData?.adminProjectManagement || {
     activeProjects: [],
-    restorableProjects: []
+    restorableProjects: [],
+    editableApps: []
   };
+  const editableFeedProjects = dashboardData?.editableFeedProjects || [];
   const managementCopy = useMemo(
     () => getProjectManagementCopy(projectManagementMode),
     [projectManagementMode]
@@ -202,6 +204,27 @@ export default function CreatorDashboardClient() {
       filteredManageableProjects[0] ||
       null,
     [filteredManageableProjects, selectedManagedProjectId]
+  );
+  const filteredEditableFeedProjects = useMemo(() => {
+    const searchTerm = projectManagementSearch.trim().toLowerCase();
+
+    if (!searchTerm) {
+      return editableFeedProjects;
+    }
+
+    return editableFeedProjects.filter((project) =>
+      [project.title, project.creator_name, project.website_url, project.slug]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(searchTerm))
+    );
+  }, [editableFeedProjects, projectManagementSearch]);
+  const editableAppProjects = useMemo(
+    () => filteredEditableFeedProjects.filter((project) => project.source === "app"),
+    [filteredEditableFeedProjects]
+  );
+  const editableSubmissionProjects = useMemo(
+    () => filteredEditableFeedProjects.filter((project) => project.source === "submission"),
+    [filteredEditableFeedProjects]
   );
 
   useEffect(() => {
@@ -332,10 +355,22 @@ export default function CreatorDashboardClient() {
       )
       .subscribe();
 
+    const appsChannel = browserSupabase
+      .channel(`creator-dashboard-apps-${activeRangeKey}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "apps" },
+        () => {
+          loadDashboard();
+        }
+      )
+      .subscribe();
+
     return () => {
       active = false;
       browserSupabase.removeChannel(submissionsChannel);
       browserSupabase.removeChannel(interactionsChannel);
+      browserSupabase.removeChannel(appsChannel);
     };
   }, [activeRangeKey, isAdmin, sessionEmail]);
 
@@ -1044,7 +1079,6 @@ export default function CreatorDashboardClient() {
                   <button
                     type="button"
                     className="dashboard-range-chip dashboard-range-chip-edit"
-                    disabled={!manageableProjects.length}
                     onClick={() => setEditorPickerOpen(true)}
                   >
                     Bearbeiten
@@ -1285,24 +1319,57 @@ export default function CreatorDashboardClient() {
             Wähle ein freigegebenes Projekt aus. Die Suche links im Dashboard wirkt auch hier.
           </p>
 
-          {filteredManageableProjects.length ? (
-            <div className="editor-picker-list">
-              {filteredManageableProjects.map((project) => (
-                <Link
-                  key={`editor-${project.id}`}
-                  href={`/creator/dashboard/editor?id=${project.id}`}
-                  className={`management-project-button ${
-                    selectedManagedProject?.id === project.id
-                      ? "management-project-button-active"
-                      : ""
-                  }`.trim()}
-                  onClick={() => setEditorPickerOpen(false)}
-                >
-                  <strong>{project.project_name}</strong>
-                  <span>{project.creator_name || "Ohne Namen"}</span>
-                  <small>{project.website_url || project.public_slug || "Ohne Link"}</small>
-                </Link>
-              ))}
+          {filteredEditableFeedProjects.length ? (
+            <div className="editor-picker-groups">
+              <div className="editor-picker-group">
+                <strong className="editor-picker-heading">Startseiten-Projekte</strong>
+                {editableAppProjects.length ? (
+                  <div className="editor-picker-list">
+                    {editableAppProjects.map((project) => (
+                      <Link
+                        key={`editor-app-${project.id}`}
+                        href={project.editHref}
+                        className="management-project-button"
+                        onClick={() => setEditorPickerOpen(false)}
+                      >
+                        <strong>{project.title}</strong>
+                        <span>{project.creator_name || "CuratedHub"}</span>
+                        <small>{project.website_url || project.slug || "Ohne Link"}</small>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="management-empty-state">
+                    <strong>Keine Startseiten-Projekte gefunden.</strong>
+                    <p>Mit der aktuellen Suche passt kein lokales Feed-Projekt.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="editor-picker-group">
+                <strong className="editor-picker-heading">Community-Projekte</strong>
+                {editableSubmissionProjects.length ? (
+                  <div className="editor-picker-list">
+                    {editableSubmissionProjects.map((project) => (
+                      <Link
+                        key={`editor-submission-${project.id}`}
+                        href={project.editHref}
+                        className="management-project-button"
+                        onClick={() => setEditorPickerOpen(false)}
+                      >
+                        <strong>{project.title}</strong>
+                        <span>{project.creator_name || "Ohne Namen"}</span>
+                        <small>{project.website_url || project.slug || "Ohne Link"}</small>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="management-empty-state">
+                    <strong>Keine Community-Projekte gefunden.</strong>
+                    <p>Mit der aktuellen Suche passt kein freigegebenes Community-Projekt.</p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="management-empty-state">
