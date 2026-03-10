@@ -1039,6 +1039,18 @@ export default function CreatorDashboardClient() {
                   >
                     Wiederherstellen
                   </button>
+                  {selectedManagedProject ? (
+                    <Link
+                      href={`/creator/dashboard/editor?id=${selectedManagedProject.id}`}
+                      className="button button-edit"
+                    >
+                      Bearbeiten
+                    </Link>
+                  ) : (
+                    <button type="button" className="button button-edit" disabled>
+                      Bearbeiten
+                    </button>
+                  )}
                 </div>
               </div>
 
