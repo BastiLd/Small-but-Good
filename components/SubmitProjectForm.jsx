@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { withBasePath } from "../lib/basePath";
 import { ensureCreatorProfile } from "../lib/creator-profile";
 import { findPublicSubmissionDuplicates } from "../lib/public-submission-duplicates";
+import { optimizeImageFile } from "../lib/image-utils";
 import { browserSupabase } from "../lib/supabase-browser";
 import TextPromptOverlay from "./TextPromptOverlay";
 
@@ -60,56 +61,6 @@ function getDraftFromStorage() {
   } catch {
     return initialForm;
   }
-}
-
-function loadFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("Die Datei konnte nicht gelesen werden."));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImageElement(src) {
-  return new Promise((resolve, reject) => {
-    const image = new window.Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Das Bild konnte nicht verarbeitet werden."));
-    image.src = src;
-  });
-}
-
-async function optimizeImageFile(file) {
-  const dataUrl = await loadFileAsDataUrl(file);
-
-  if (file.type === "image/svg+xml" || dataUrl.length <= 1_400_000) {
-    return dataUrl;
-  }
-
-  const image = await loadImageElement(dataUrl);
-  const maxDimension = 1600;
-  const scale = Math.min(
-    1,
-    maxDimension / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height)
-  );
-  const canvas = document.createElement("canvas");
-  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
-  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    return dataUrl;
-  }
-
-  context.drawImage(image, 0, 0, width, height);
-  const targetType = file.type === "image/png" ? "image/png" : "image/jpeg";
-  const optimized = canvas.toDataURL(targetType, targetType === "image/png" ? undefined : 0.84);
-
-  return optimized.length < dataUrl.length ? optimized : dataUrl;
 }
 
 export default function SubmitProjectForm() {
@@ -240,6 +191,14 @@ export default function SubmitProjectForm() {
       setStatus({
         type: "error",
         message: "Bitte fülle Name, E-Mail, Projektname und Beschreibung aus."
+      });
+      return false;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setStatus({
+        type: "error",
+        message: "Bitte gib eine gültige E-Mail-Adresse ein."
       });
       return false;
     }

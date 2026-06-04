@@ -15,6 +15,7 @@ import {
   serializeProjectSections
 } from "../lib/project-content";
 import { slugify } from "../lib/project-utils";
+import { optimizeImageFile } from "../lib/image-utils";
 import { browserSupabase } from "../lib/supabase-browser";
 import ProjectContentSections from "./ProjectContentSections";
 import styles from "./CreatorProjectEditorClient.module.css";
@@ -127,56 +128,6 @@ function buildFormState(row, source) {
     detailSlug: row?.public_slug || "",
     creatorName: row?.creator_name || row?.email || "Creator"
   };
-}
-
-function loadFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("Die Datei konnte nicht gelesen werden."));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImageElement(src) {
-  return new Promise((resolve, reject) => {
-    const image = new window.Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Das Bild konnte nicht verarbeitet werden."));
-    image.src = src;
-  });
-}
-
-async function optimizeImageFile(file) {
-  const dataUrl = await loadFileAsDataUrl(file);
-
-  if (file.type === "image/svg+xml" || dataUrl.length <= 1_400_000) {
-    return dataUrl;
-  }
-
-  const image = await loadImageElement(dataUrl);
-  const maxDimension = 1600;
-  const scale = Math.min(
-    1,
-    maxDimension / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height)
-  );
-  const canvas = document.createElement("canvas");
-  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
-  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    return dataUrl;
-  }
-
-  context.drawImage(image, 0, 0, width, height);
-  const targetType = file.type === "image/png" ? "image/png" : "image/jpeg";
-  const optimized = canvas.toDataURL(targetType, targetType === "image/png" ? undefined : 0.84);
-
-  return optimized.length < dataUrl.length ? optimized : dataUrl;
 }
 
 export default function CreatorProjectEditorClient() {
