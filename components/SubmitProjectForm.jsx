@@ -6,6 +6,7 @@ import { withBasePath } from "../lib/basePath";
 import { ensureCreatorProfile } from "../lib/creator-profile";
 import { findPublicSubmissionDuplicates } from "../lib/public-submission-duplicates";
 import { optimizeImageFile } from "../lib/image-utils";
+import { isValidEmail } from "../lib/validation";
 import { browserSupabase } from "../lib/supabase-browser";
 import TextPromptOverlay from "./TextPromptOverlay";
 
@@ -195,7 +196,7 @@ export default function SubmitProjectForm() {
       return false;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    if (!isValidEmail(form.email)) {
       setStatus({
         type: "error",
         message: "Bitte gib eine gültige E-Mail-Adresse ein."
